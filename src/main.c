@@ -18,6 +18,7 @@
 
 #define GPIO_PORTF_CLOCK    (1U << 5)
 #define RED_LED             (1U << 1)
+#define BLUE_LED             (1U << 2)
 
 /********************************************* Externs ********************************************/
 
@@ -49,14 +50,18 @@ int main(void)
 
     /* Configure PF1 as output */
     GPIO_PORTF_DIR_R |= RED_LED;
+    GPIO_PORTF_DIR_R |= BLUE_LED;
 
     /* Enable digital functionality */
     GPIO_PORTF_DEN_R |= RED_LED;
+    GPIO_PORTF_DEN_R |= BLUE_LED;
 
     while (1)
     {
         /* Toggle Red LED */
         GPIO_PORTF_DATA_R ^= RED_LED;
+        delay();
+        GPIO_PORTF_DATA_R ^= BLUE_LED;
 
         delay();
     }

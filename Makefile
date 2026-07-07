@@ -12,6 +12,13 @@ SIZE    := C:/SysGCC/arm-eabi/bin/arm-none-eabi-size.exe
 
 LMFLASH = "C:/Program Files (x86)/Texas Instruments/Stellaris/LM Flash Programmer/LMFlash.exe"
 
+
+###############################################################################
+# Debug Tool
+###############################################################################
+
+OPENOCD = C:/OpenOCD/bin/openocd.exe
+
 ###############################################################################
 # Project
 ###############################################################################
@@ -126,8 +133,16 @@ clean:
 flash: $(BUILD_DIR)/$(TARGET).bin
 	$(LMFLASH) -q ek-tm4c123gxl -v -r "$(CURDIR)/$<"
 
+
+###############################################################################
+# Start OpenOCD Debug Server
+###############################################################################
+
+debug:
+	$(OPENOCD) -f board/ti_ek-tm4c123gxl.cfg
+
 ###############################################################################
 # Phony Targets
 ###############################################################################
 
-.PHONY: all clean directories
+.PHONY: all clean directories flash debug
