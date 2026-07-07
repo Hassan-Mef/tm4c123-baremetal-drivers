@@ -7,6 +7,12 @@ OBJCOPY := C:/SysGCC/arm-eabi/bin/arm-none-eabi-objcopy.exe
 SIZE    := C:/SysGCC/arm-eabi/bin/arm-none-eabi-size.exe
 
 ###############################################################################
+# Flash Tool
+###############################################################################
+
+LMFLASH = "C:/Program Files (x86)/Texas Instruments/Stellaris/LM Flash Programmer/LMFlash.exe"
+
+###############################################################################
 # Project
 ###############################################################################
 
@@ -112,6 +118,13 @@ $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
 clean:
 	rm -rf $(OBJ_DIR)
 	rm -rf $(BUILD_DIR)
+
+###############################################################################
+# Flash Firmware
+###############################################################################
+
+flash: $(BUILD_DIR)/$(TARGET).bin
+	$(LMFLASH) -q ek-tm4c123gxl -v -r "$(CURDIR)/$<"
 
 ###############################################################################
 # Phony Targets
