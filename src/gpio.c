@@ -86,3 +86,123 @@ GpioErrorType gpio_init(GpioConfigType * const config)
 
     return GPIO_SUCCESS;
 }
+
+GpioErrorType Gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
+{
+    GpioRegistersType *gpio = NULL;
+
+    /* Validation */
+
+    if (config == NULL)
+    {
+        return GPIO_ERROR_NULL_POINTER;
+    }
+
+    if (pinState == NULL)
+    {
+        return GPIO_ERROR_NULL_POINTER;
+    }
+
+    if (config->port >= GPIO_PORT_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PORT;
+    }
+
+    if (config->pin >= GPIO_PIN_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PIN;
+    }
+
+    if (config->mode >= GPIO_MODE_INVALID)
+    {
+        return GPIO_ERROR_INVALID_MODE;
+    }
+
+    gpio = gpioPorts[config->port];
+
+    if(pinState)
+    {
+        gpio->DATA[255] |= (1U << config->pin);
+    }
+    else 
+    {
+        gpio->DATA[255] &= ~(1U << config->pin);
+    }
+    return GPIO_SUCCESS ;
+
+}
+
+GpioErrorType Gpio_digitalToggle(GpioConfigType * const config)
+{
+
+    GpioRegistersType *gpio = NULL;
+
+    /* Validation */
+
+    if (config == NULL)
+    {
+        return GPIO_ERROR_NULL_POINTER;
+    }
+
+    if (config->port >= GPIO_PORT_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PORT;
+    }
+
+    if (config->pin >= GPIO_PIN_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PIN;
+    }
+
+    if (config->mode >= GPIO_MODE_INVALID)
+    {
+        return GPIO_ERROR_INVALID_MODE;
+    }
+
+    gpio = gpioPorts[config->port];
+
+    gpio->DATA[255] ^=(1U << config->pin);
+
+    return GPIO_SUCCESS;
+
+}
+
+GpioErrorType Gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState)
+{
+    GpioRegistersType *gpio = NULL;
+
+    /* Validation */
+
+    if (config == NULL)
+    {
+        return GPIO_ERROR_NULL_POINTER;
+    }
+
+    if (config->port >= GPIO_PORT_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PORT;
+    }
+
+    if (config->pin >= GPIO_PIN_INVALID)
+    {
+        return GPIO_ERROR_INVALID_PIN;
+    }
+
+    if (config->mode >= GPIO_MODE_INVALID)
+    {
+        return GPIO_ERROR_INVALID_MODE;
+    }
+
+    gpio = gpioPorts[config->port];
+
+    if(gpio->DATA[255] & (1U << config->pin))
+    {
+        *pinState = 1;
+    }
+    else
+    {
+        *pinState = 0;
+    }
+
+    return GPIO_SUCCESS;
+}

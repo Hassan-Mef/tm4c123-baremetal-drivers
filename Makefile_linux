@@ -1,6 +1,3 @@
-##############################################################################
-#  Window compatable Makefile for Tiva C Series TM4C123GXL(if MSYS2 or MINGw is missing)
-
 ###############################################################################
 # Toolchain
 ###############################################################################
@@ -14,6 +11,7 @@ SIZE    := C:/SysGCC/arm-eabi/bin/arm-none-eabi-size.exe
 ###############################################################################
 
 LMFLASH = "C:/Program Files (x86)/Texas Instruments/Stellaris/LM Flash Programmer/LMFlash.exe"
+
 
 ###############################################################################
 # Debug Tool
@@ -41,16 +39,11 @@ PLATFORM_DIR = platform
 # Source Files
 ###############################################################################
 
-C_SOURCE = \
-$(SRC_DIR)/main.c \
-$(SRC_DIR)/gpio.c
-
-
+C_SOURCE   = $(SRC_DIR)/main.c
 ASM_SOURCE = $(PLATFORM_DIR)/startup.s
 
 OBJECTS = \
 $(OBJ_DIR)/main.o \
-$(OBJ_DIR)/gpio.o \
 $(OBJ_DIR)/startup.o
 
 ###############################################################################
@@ -86,17 +79,14 @@ all: directories $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_D
 ###############################################################################
 
 directories:
-	if not exist "$(OBJ_DIR)" mkdir "$(OBJ_DIR)"
-	if not exist "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
+	mkdir -p $(OBJ_DIR)
+	mkdir -p $(BUILD_DIR)
 
 ###############################################################################
 # Compile C
 ###############################################################################
 
 $(OBJ_DIR)/main.o: $(C_SOURCE)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/gpio.o: $(SRC_DIR)/gpio.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ###############################################################################
@@ -133,8 +123,8 @@ $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
 ###############################################################################
 
 clean:
-	if exist "$(OBJ_DIR)" rmdir /S /Q "$(OBJ_DIR)"
-	if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)"
+	rm -rf $(OBJ_DIR)
+	rm -rf $(BUILD_DIR)
 
 ###############################################################################
 # Flash Firmware
@@ -142,6 +132,7 @@ clean:
 
 flash: $(BUILD_DIR)/$(TARGET).bin
 	$(LMFLASH) -q ek-tm4c123gxl -v -r "$(CURDIR)/$<"
+
 
 ###############################################################################
 # Start OpenOCD Debug Server
