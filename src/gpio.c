@@ -129,14 +129,18 @@ GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
     gpio = gpioPorts[config->port];
 
     /* Set or clear the selected GPIO pin */
-    if(pinState)
+    switch(pinState)  
     {
-        gpio->DATA[255] |= (1U << config->pin);
+        case GPIO_STATE_HIGH:
+            gpio->DATA[255] |= (1U << config->pin);
+            break;
+        case GPIO_STATE_LOW:
+            gpio->DATA[255] &= ~(1U << config->pin);
+            break;
+        default:
+            return GPIO_ERROR_INVALID_STATE;
     }
-    else 
-    {
-        gpio->DATA[255] &= ~(1U << config->pin);
-    }
+    
     return GPIO_SUCCESS ;
 
 }

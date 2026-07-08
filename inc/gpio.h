@@ -21,7 +21,7 @@
 #define SYSCTL_RCGCGPIO_OFFSET    0x608U
 
 #define SYSCTL_RCGCGPIO \
-    (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCGPIO_OFFSET))
+    (*(uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCGPIO_OFFSET))
 
 
 /* APB  Base Address*/
@@ -40,6 +40,12 @@
 #define GPIOD ((GpioRegistersType *)GPIO_PORT_D_BASE)
 #define GPIOE ((GpioRegistersType *)GPIO_PORT_E_BASE)
 #define GPIOF ((GpioRegistersType *)GPIO_PORT_F_BASE)
+
+
+/* GPIO State Macro*/
+#define GPIO_STATE_LOW  0
+#define GPIO_STATE_HIGH 1
+
 
 
 /****************************************** Enumerations ******************************************/
