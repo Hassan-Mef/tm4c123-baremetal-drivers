@@ -1,66 +1,42 @@
-/*=============================================================================
- * FILENAME    : linker.ld
- * DESCRIPTION : Linker script for the TM4C123GH6PM microcontroller.
- * AUTHOR      : Hassan
- *===========================================================================*/
+/* Define the end of stack, 0x20005000 in this case */
+_estack = ORIGIN(RAM) + LENGTH(RAM);
 
-ENTRY(Reset_Handler)
-
-_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
-
+/* Define memory of the device */
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 256K
-    SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 32K
+  FLASH ( rx ) : ORIGIN = 0x00000000 , LENGTH = 256K
+  RAM ( rxw ) : ORIGIN = 0x20000000 , LENGTH = 32K
 }
 
-
+/* Define different sections of memory and where to store them */
 SECTIONS
 {
-     /*-------------------------------------------------------------
-     * Interrupt Vector Table
-     *------------------------------------------------------------*/
-    .isr_vector :
-    {
-        KEEP(*(.isr_vector))
-    } > FLASH
+  .text :
+  {
+    *(.isr_vector)
+    *(.text)
+    *(.rodata)
+	. = ALIGN(4);
+	_etext = .;
+  } > FLASH
 
-    /*-------------------------------------------------------------
-     * Program Code and Read-Only Data
-     *------------------------------------------------------------*/
-    .text :
-    {
-        KEEP(*(.text.Reset_Handler))
+  /* Used by the startup file to initialize data */
+  _sidata = LOADADDR(.data);
+  .data :
+  {
+    _sdata = .;
+	*(.data)
+	. = ALIGN(4);
+	_edata = .;
+  } > RAM AT> FLASH
 
-        *(.text)
-        *(.text*)
-
-        *(.rodata)
-        *(.rodata*)
-    } > FLASH
-
-    _sidata = LOADADDR(.data);
-
-    .data :
-    {
-        _sdata = .;
-
-        *(.data)
-        *(.data*)
-
-        _edata = .;
-    } > SRAM AT > FLASH
-
-    .bss :
-    {
-        _sbss = .;
-
-        *(.bss)
-        *(.bss*)
-
-
-        /* End of .bss */
-        _ebss = .;
-
-    } > SRAM
+  .bss :
+  {
+    _sbss = .;
+    *(.bss)
+	*(COMMON)
+	. = ALIGN(4);
+	_ebss = .;
+  } > RAM
 }
+
