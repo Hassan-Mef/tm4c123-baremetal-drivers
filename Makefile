@@ -39,12 +39,13 @@ PLATFORM_DIR = platform
 # Source Files
 ###############################################################################
 
-C_SOURCE   = $(SRC_DIR)/main.c
-ASM_SOURCE = $(PLATFORM_DIR)/startup.s
+C_SOURCES  := $(wildcard $(SRC_DIR)/*.c)
+ASM_SOURCE := $(PLATFORM_DIR)/startup.s
 
-OBJECTS = \
-$(OBJ_DIR)/main.o \
-$(OBJ_DIR)/startup.o
+C_OBJECTS  := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(C_SOURCES))
+ASM_OBJECT := $(OBJ_DIR)/startup.o
+
+OBJECTS := $(C_OBJECTS) $(ASM_OBJECT)
 
 ###############################################################################
 # Compiler Flags
@@ -83,12 +84,12 @@ directories:
 	mkdir -p $(BUILD_DIR)
 
 ###############################################################################
-# Compile C
+# Compile C Sources
 ###############################################################################
 
-$(OBJ_DIR)/main.o: $(C_SOURCE)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
+	
 ###############################################################################
 # Assemble Startup
 ###############################################################################
