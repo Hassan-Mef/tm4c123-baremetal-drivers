@@ -34,12 +34,12 @@
 
 
 /* GPIO */
-#define GPIOA ((GpioRegistersType *)GPIO_PORT_A_BASE)
-#define GPIOB ((GpioRegistersType *)GPIO_PORT_B_BASE)
-#define GPIOC ((GpioRegistersType *)GPIO_PORT_C_BASE)
-#define GPIOD ((GpioRegistersType *)GPIO_PORT_D_BASE)
-#define GPIOE ((GpioRegistersType *)GPIO_PORT_E_BASE)
-#define GPIOF ((GpioRegistersType *)GPIO_PORT_F_BASE)
+#define GPIOA ((gpio_registersType *)GPIO_PORT_A_BASE)
+#define GPIOB ((gpio_registersType *)GPIO_PORT_B_BASE)
+#define GPIOC ((gpio_registersType *)GPIO_PORT_C_BASE)
+#define GPIOD ((gpio_registersType *)GPIO_PORT_D_BASE)
+#define GPIOE ((gpio_registersType *)GPIO_PORT_E_BASE)
+#define GPIOF ((gpio_registersType *)GPIO_PORT_F_BASE)
 
 
 /* GPIO State Macro*/
@@ -59,7 +59,7 @@ typedef enum
     GPIO_PORT_E,
     GPIO_PORT_F,
     GPIO_PORT_INVALID
-} GpioPortType;
+} gpio_portType;
 
 typedef enum
 {
@@ -80,7 +80,7 @@ typedef enum
     GPIO_PIN_14,
     GPIO_PIN_15,
     GPIO_PIN_INVALID
-} GpioPinType;
+} gpio_pinType;
 
 
 typedef enum
@@ -90,7 +90,7 @@ typedef enum
     GPIO_MODE_ALTERNATE,
     GPIO_MODE_ANALOG,
     GPIO_MODE_INVALID
-} GpioModeType;
+} gpio_modeType;
 
 
 typedef enum
@@ -102,17 +102,17 @@ typedef enum
     GPIO_ERROR_INVALID_MODE,
     GPIO_ERROR_INVALID_STATE,
     GPIO_ERROR_UNDEFINED_MODE
-} GpioErrorType;
+} gpio_errorType;
 
 
 /******************************************* Data Types *******************************************/
 
 typedef struct 
 {
-    GpioPortType port;
-    GpioPinType pin;
-    GpioModeType mode;
-} GpioConfigType;
+    gpio_portType port;
+    gpio_pinType pin;
+    gpio_modeType mode;
+} gpio_configType;
 
 typedef struct
 {
@@ -233,14 +233,14 @@ typedef struct
     /* 0xFFC */
     volatile const uint32_t PCellID3;
 
-} GpioRegistersType;
+} gpio_registersType;
 
 /*************************************** Function Prototypes **************************************/
 
-GpioErrorType gpio_init(GpioConfigType * const config);
-GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState);
-GpioErrorType gpio_digitalToggle(GpioConfigType * const config);
-GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t *pinState);
+gpio_errorType gpio_init(gpio_configType * const config);
+gpio_errorType gpio_digitalWrite(gpio_configType * const config, uint8_t pinState);
+gpio_errorType gpio_digitalToggle(gpio_configType * const config);
+gpio_errorType gpio_digitalRead(gpio_configType * const config, uint8_t *pinState);
 
 
 #endif

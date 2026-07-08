@@ -13,7 +13,7 @@
 /********************************************* Globals ********************************************/
 
 /* GPIO Port Table */
-static GpioRegistersType * const gpioPorts[] =
+static gpio_registersType * const gpioPorts[] =
 {
     GPIOA,
     GPIOB,
@@ -30,11 +30,11 @@ static GpioRegistersType * const gpioPorts[] =
  *
  * @param config : Pointer to GPIO configuration.
  *
- * @return GpioErrorType
+ * @return gpio_errorType
  */
-GpioErrorType gpio_init(GpioConfigType * const config)
+gpio_errorType gpio_init(gpio_configType * const config)
 {
-    GpioRegistersType *gpio = NULL;
+    gpio_registersType *gpio = NULL;
 
     if (config == NULL)
     {
@@ -94,11 +94,11 @@ GpioErrorType gpio_init(GpioConfigType * const config)
  * @param config : Pointer to GPIO configuration.
  * @param pinState : Logic state to write (0 or 1).
  *
- * @return GpioErrorType
+ * @return gpio_errorType
  */
-GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
+gpio_errorType gpio_digitalWrite(gpio_configType * const config, uint8_t pinState)
 {
-    GpioRegistersType *gpio = NULL;
+    gpio_registersType *gpio = NULL;
 
     /* Validate configuration parameters */
 
@@ -152,12 +152,12 @@ GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
  *
  * @param config : Pointer to GPIO configuration.
  *
- * @return GpioErrorType
+ * @return gpio_errorType
  */
-GpioErrorType gpio_digitalToggle(GpioConfigType * const config)
+gpio_errorType gpio_digitalToggle(gpio_configType * const config)
 {
 
-    GpioRegistersType *gpio = NULL;
+    gpio_registersType *gpio = NULL;
 
     /* Validate configuration parameters */
 
@@ -195,11 +195,11 @@ GpioErrorType gpio_digitalToggle(GpioConfigType * const config)
  * @param config : Pointer to GPIO configuration.
  * @param pinState : Pointer to store the read logic state (0 or 1).
  *
- * @return GpioErrorType
+ * @return gpio_errorType
  */
-GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState)
+gpio_errorType gpio_digitalRead(gpio_configType * const config, uint8_t * pinState)
 {
-    GpioRegistersType *gpio = NULL;
+    gpio_registersType *gpio = NULL;
 
     /* Validate configuration parameters */
 

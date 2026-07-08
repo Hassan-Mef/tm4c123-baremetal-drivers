@@ -23,14 +23,14 @@ static void delay(void)
 
 int main(void)
 {
-    GpioConfigType redLed =
+    gpio_configType redLed =
     {
         .port = GPIO_PORT_F,
         .pin = GPIO_PIN_1,
         .mode = GPIO_MODE_OUTPUT
     };
 
-    GpioConfigType blueLed =
+    gpio_configType blueLed =
     {
         .port = GPIO_PORT_F,
         .pin = GPIO_PIN_2,
