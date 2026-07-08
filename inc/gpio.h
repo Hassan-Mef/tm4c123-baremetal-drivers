@@ -100,7 +100,8 @@ typedef enum
     GPIO_ERROR_INVALID_PORT,
     GPIO_ERROR_INVALID_PIN,
     GPIO_ERROR_INVALID_MODE,
-    GPIO_ERROR_INVALID_STATE
+    GPIO_ERROR_INVALID_STATE,
+    GPIO_ERROR_UNDEFINED_MODE
 } GpioErrorType;
 
 
@@ -116,7 +117,10 @@ typedef struct
 typedef struct
 {
     /* 0x000 - 0x3FC */
-    volatile uint32_t DATA[256];
+    volatile uint32_t RESERVED0[255];
+    
+    /* 0x3FC  cuz pin */
+    volatile uint32_t DATA;
 
     /* 0x400 */
     volatile uint32_t DIR;
@@ -146,7 +150,7 @@ typedef struct
     volatile uint32_t AFSEL;
 
     /* Reserved: (0x500 - 0x424) / 4 = 55 words */
-    volatile uint32_t RESERVED0[55];
+    volatile uint32_t RESERVED1[55];
 
     /* 0x500 */
     volatile uint32_t DR2R;
@@ -191,7 +195,7 @@ typedef struct
     volatile uint32_t DMACTL;
 
     /* Reserved bytes: 0x538 - 0xFCF */
-    volatile uint32_t RESERVED1[678];
+    volatile uint32_t RESERVED2[678];
 
     /* 0xFD0 */
     volatile const uint32_t PeriphID4;

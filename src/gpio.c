@@ -73,8 +73,10 @@ GpioErrorType gpio_init(GpioConfigType * const config)
             gpio->DIR |= (1U << config->pin);
             break;
         case GPIO_MODE_ALTERNATE:
+            return GPIO_ERROR_UNDEFINED_MODE;
             break;
         case GPIO_MODE_ANALOG:
+            return GPIO_ERROR_UNDEFINED_MODE;
             break;
         default:
             return GPIO_ERROR_INVALID_MODE;
@@ -107,7 +109,7 @@ GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
 
     if (pinState == NULL)
     {
-        return GPIO_ERROR_NULL_POINTER;
+        return GPIO_ERROR_INVALID_STATE;
     }
 
     if (config->port >= GPIO_PORT_INVALID)
@@ -132,10 +134,10 @@ GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
     switch(pinState)  
     {
         case GPIO_STATE_HIGH:
-            gpio->DATA[255] |= (1U << config->pin);
+            gpio->DATA |= (1U << config->pin);
             break;
         case GPIO_STATE_LOW:
-            gpio->DATA[255] &= ~(1U << config->pin);
+            gpio->DATA &= ~(1U << config->pin);
             break;
         default:
             return GPIO_ERROR_INVALID_STATE;
@@ -181,7 +183,7 @@ GpioErrorType gpio_digitalToggle(GpioConfigType * const config)
 
     gpio = gpioPorts[config->port];
 
-    gpio->DATA[255] ^=(1U << config->pin);
+    gpio->DATA ^=(1U << config->pin);
 
     return GPIO_SUCCESS;
 
@@ -208,7 +210,7 @@ GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState
 
     if (pinState == NULL)
     {
-        return GPIO_ERROR_NULL_POINTER;
+        return GPIO_ERROR_INVALID_STATE;
     }
 
     if (config->port >= GPIO_PORT_INVALID)
@@ -230,13 +232,13 @@ GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState
     gpio = gpioPorts[config->port];
 
     /* Read the state of the selected GPIO pin */
-    if(gpio->DATA[255] & (1U << config->pin))
+    if(gpio->DATA & (1U << config->pin))
     {
-        *pinState = 1;
+        *pinState = GPIO_STATE_HIGH;
     }
     else
     {
-        *pinState = 0;
+        *pinState = GPIO_STATE_LOW;
     }
 
     return GPIO_SUCCESS;
