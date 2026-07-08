@@ -2,22 +2,22 @@
 # Toolchain
 ###############################################################################
 
-CC      := C:/SysGCC/arm-eabi/bin/arm-none-eabi-gcc.exe
-OBJCOPY := C:/SysGCC/arm-eabi/bin/arm-none-eabi-objcopy.exe
-SIZE    := C:/SysGCC/arm-eabi/bin/arm-none-eabi-size.exe
+CC      := arm-none-eabi-gcc
+OBJCOPY := arm-none-eabi-objcopy
+SIZE    := arm-none-eabi-size
 
 ###############################################################################
 # Flash Tool
 ###############################################################################
 
-LMFLASH = "C:/Program Files (x86)/Texas Instruments/Stellaris/LM Flash Programmer/LMFlash.exe"
+LMFLASH = LMFlash.exe
 
 
 ###############################################################################
 # Debug Tool
 ###############################################################################
 
-OPENOCD = C:/OpenOCD/bin/openocd.exe
+OPENOCD := openocd
 
 ###############################################################################
 # Project
@@ -67,7 +67,7 @@ CFLAGS = \
 LDFLAGS = \
 -T$(PLATFORM_DIR)/linker.ld \
 -Wl,-Map=$(BUILD_DIR)/$(TARGET).map \
--Wl,--gc-sections
+
 
 ###############################################################################
 # Default Target
@@ -102,7 +102,7 @@ $(OBJ_DIR)/startup.o: $(ASM_SOURCE)
 ###############################################################################
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CC) $(OBJECTS) $(LDFLAGS) -nostartfiles -o $@
 	$(SIZE) $@
 
 ###############################################################################
