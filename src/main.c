@@ -43,10 +43,10 @@ int main(void)
 
     while (1)
     {
-        Gpio_digitalToggle(&redLed);
+        gpio_digitalToggle(&redLed);
         delay();
 
-        Gpio_digitalToggle(&blueLed);
+        gpio_digitalToggle(&blueLed);
         delay();
     }
 }
