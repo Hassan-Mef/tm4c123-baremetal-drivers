@@ -12,7 +12,7 @@
 
 /********************************************* Globals ********************************************/
 
-/* GPIO Port Lookup Table */
+/* GPIO Port Table */
 static GpioRegistersType * const gpioPorts[] =
 {
     GPIOA,
@@ -60,7 +60,6 @@ GpioErrorType gpio_init(GpioConfigType * const config)
     SYSCTL_RCGCGPIO |= (1U << config->port);
 
 
-
     /* Get pointer to selected GPIO peripheral */
     gpio = gpioPorts[config->port];
 
@@ -87,11 +86,19 @@ GpioErrorType gpio_init(GpioConfigType * const config)
     return GPIO_SUCCESS;
 }
 
-GpioErrorType Gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
+/**
+ * @brief gpio_digitalWrite : Writes a digital value to a GPIO pin.
+ *
+ * @param config : Pointer to GPIO configuration.
+ * @param pinState : Logic state to write (0 or 1).
+ *
+ * @return GpioErrorType
+ */
+GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
 {
     GpioRegistersType *gpio = NULL;
 
-    /* Validation */
+    /* Validate configuration parameters */
 
     if (config == NULL)
     {
@@ -118,8 +125,10 @@ GpioErrorType Gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
         return GPIO_ERROR_INVALID_MODE;
     }
 
+    /* Get pointer to selected GPIO peripheral */
     gpio = gpioPorts[config->port];
 
+    /* Set or clear the selected GPIO pin */
     if(pinState)
     {
         gpio->DATA[255] |= (1U << config->pin);
@@ -132,12 +141,19 @@ GpioErrorType Gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState)
 
 }
 
-GpioErrorType Gpio_digitalToggle(GpioConfigType * const config)
+/**
+ * @brief gpio_digitalToggle : Toggles the state of a GPIO pin.
+ *
+ * @param config : Pointer to GPIO configuration.
+ *
+ * @return GpioErrorType
+ */
+GpioErrorType gpio_digitalToggle(GpioConfigType * const config)
 {
 
     GpioRegistersType *gpio = NULL;
 
-    /* Validation */
+    /* Validate configuration parameters */
 
     if (config == NULL)
     {
@@ -167,13 +183,26 @@ GpioErrorType Gpio_digitalToggle(GpioConfigType * const config)
 
 }
 
-GpioErrorType Gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState)
+/**
+ * @brief gpio_digitalRead : Reads the state of a GPIO pin.
+ *
+ * @param config : Pointer to GPIO configuration.
+ * @param pinState : Pointer to store the read logic state (0 or 1).
+ *
+ * @return GpioErrorType
+ */
+GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState)
 {
     GpioRegistersType *gpio = NULL;
 
-    /* Validation */
+    /* Validate configuration parameters */
 
     if (config == NULL)
+    {
+        return GPIO_ERROR_NULL_POINTER;
+    }
+
+    if (pinState == NULL)
     {
         return GPIO_ERROR_NULL_POINTER;
     }
@@ -193,8 +222,10 @@ GpioErrorType Gpio_digitalRead(GpioConfigType * const config, uint8_t * pinState
         return GPIO_ERROR_INVALID_MODE;
     }
 
+    /* Get pointer to selected GPIO peripheral */
     gpio = gpioPorts[config->port];
 
+    /* Read the state of the selected GPIO pin */
     if(gpio->DATA[255] & (1U << config->pin))
     {
         *pinState = 1;

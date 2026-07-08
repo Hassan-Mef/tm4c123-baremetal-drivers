@@ -23,10 +23,6 @@
 #define SYSCTL_RCGCGPIO \
     (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCGPIO_OFFSET))
 
-#define SYSCTL_PRGPIO_OFFSET 0xA08U
-
-#define SYSCTL_PRGPIO \
-    (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_PRGPIO_OFFSET))
 
 /* APB  Base Address*/
 #define GPIO_PORT_A_BASE 0x40004000U
@@ -100,6 +96,9 @@ typedef enum
     GPIO_ERROR_INVALID_MODE,
     GPIO_ERROR_INVALID_STATE
 } GpioErrorType;
+
+
+/******************************************* Data Types *******************************************/
 
 typedef struct 
 {
@@ -226,17 +225,12 @@ typedef struct
 
 } GpioRegistersType;
 
-/******************************************* Data Types *******************************************/
-
 /*************************************** Function Prototypes **************************************/
 
 GpioErrorType gpio_init(GpioConfigType * const config);
-
-GpioErrorType Gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState);
-
-GpioErrorType Gpio_digitalToggle(GpioConfigType * const config);
-
-GpioErrorType Gpio_digitalRead(GpioConfigType * const config, uint8_t *pinState);
+GpioErrorType gpio_digitalWrite(GpioConfigType * const config, uint8_t pinState);
+GpioErrorType gpio_digitalToggle(GpioConfigType * const config);
+GpioErrorType gpio_digitalRead(GpioConfigType * const config, uint8_t *pinState);
 
 
 #endif

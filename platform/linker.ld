@@ -58,7 +58,6 @@ SECTIONS
         *(.bss)
         *(.bss*)
 
-        *(COMMON)
 
         /* End of .bss */
         _ebss = .;
