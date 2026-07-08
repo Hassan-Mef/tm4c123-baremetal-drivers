@@ -2,38 +2,37 @@
 # Toolchain
 ###############################################################################
 
-CC      := arm-none-eabi-gcc
-OBJCOPY := arm-none-eabi-objcopy
-SIZE    := arm-none-eabi-size
+CC       := arm-none-eabi-gcc
+OBJCOPY  := arm-none-eabi-objcopy
+SIZE     := arm-none-eabi-size
 
 ###############################################################################
 # Flash Tool
 ###############################################################################
 
-LMFLASH = LMFlash.exe
-
+LMFLASH  := LMFlash.exe
 
 ###############################################################################
 # Debug Tool
 ###############################################################################
 
-OPENOCD := openocd
+OPENOCD  := openocd
 
 ###############################################################################
 # Project
 ###############################################################################
 
-TARGET = final
+TARGET   := final
 
 ###############################################################################
 # Directories
 ###############################################################################
 
-SRC_DIR      = src
-INC_DIR      = inc
-OBJ_DIR      = obj
-BUILD_DIR    = build
-PLATFORM_DIR = platform
+SRC_DIR       := src
+INC_DIR       := inc
+OBJ_DIR       := obj
+BUILD_DIR     := build
+PLATFORM_DIR  := platform
 
 ###############################################################################
 # Source Files
@@ -51,7 +50,7 @@ OBJECTS := $(C_OBJECTS) $(ASM_OBJECT)
 # Compiler Flags
 ###############################################################################
 
-CFLAGS = \
+CFLAGS := \
 -mcpu=cortex-m4 \
 -mthumb \
 -std=c11 \
@@ -64,16 +63,22 @@ CFLAGS = \
 # Linker Flags
 ###############################################################################
 
-LDFLAGS = \
+LDFLAGS := \
 -T$(PLATFORM_DIR)/linker.ld \
--Wl,-Map=$(BUILD_DIR)/$(TARGET).map \
-
+-Wl,-Map=$(BUILD_DIR)/$(TARGET).map
 
 ###############################################################################
 # Default Target
 ###############################################################################
 
-all: directories $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+.DEFAULT_GOAL := build
+
+build: directories \
+       $(BUILD_DIR)/$(TARGET).elf \
+       $(BUILD_DIR)/$(TARGET).hex \
+       $(BUILD_DIR)/$(TARGET).bin
+
+all: build flash debug
 
 ###############################################################################
 # Create Directories
@@ -89,7 +94,7 @@ directories:
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
-	
+
 ###############################################################################
 # Assemble Startup
 ###############################################################################
@@ -120,20 +125,11 @@ $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
 ###############################################################################
-# Clean
-###############################################################################
-
-clean:
-	rm -rf $(OBJ_DIR)
-	rm -rf $(BUILD_DIR)
-
-###############################################################################
 # Flash Firmware
 ###############################################################################
 
 flash: $(BUILD_DIR)/$(TARGET).bin
 	$(LMFLASH) -q ek-tm4c123gxl -v -r "$(CURDIR)/$<"
-
 
 ###############################################################################
 # Start OpenOCD Debug Server
@@ -143,7 +139,15 @@ debug:
 	$(OPENOCD) -f board/ti_ek-tm4c123gxl.cfg
 
 ###############################################################################
+# Clean
+###############################################################################
+
+clean:
+	rm -rf $(OBJ_DIR)
+	rm -rf $(BUILD_DIR)
+
+###############################################################################
 # Phony Targets
 ###############################################################################
 
-.PHONY: all clean directories flash debug
+.PHONY: build all directories flash debug clean
