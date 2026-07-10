@@ -1,59 +1,56 @@
-##############################################################################
-#  Window compatable Makefile for Tiva C Series TM4C123GXL(if MSYS2 or MINGw is missing)
-
 ###############################################################################
 # Toolchain
 ###############################################################################
 
-CC       := arm-none-eabi-gcc
-OBJCOPY  := arm-none-eabi-objcopy
-SIZE     := arm-none-eabi-size
+CC      := C:/SysGCC/arm-eabi/bin/arm-none-eabi-gcc.exe
+OBJCOPY := C:/SysGCC/arm-eabi/bin/arm-none-eabi-objcopy.exe
+SIZE    := C:/SysGCC/arm-eabi/bin/arm-none-eabi-size.exe
 
 ###############################################################################
 # Flash Tool
 ###############################################################################
 
-LMFLASH  := LMFlash.exe
+LMFLASH = "C:/Program Files (x86)/Texas Instruments/Stellaris/LM Flash Programmer/LMFlash.exe"
+
 
 ###############################################################################
 # Debug Tool
 ###############################################################################
 
-OPENOCD  := openocd
+OPENOCD = C:/OpenOCD/bin/openocd.exe
 
 ###############################################################################
 # Project
 ###############################################################################
 
-TARGET   := final
+TARGET = final
 
 ###############################################################################
 # Directories
 ###############################################################################
 
-SRC_DIR       := src
-INC_DIR       := inc
-OBJ_DIR       := obj
-BUILD_DIR     := build
-PLATFORM_DIR  := platform
+SRC_DIR      = src
+INC_DIR      = inc
+OBJ_DIR      = obj
+BUILD_DIR    = build
+PLATFORM_DIR = platform
 
 ###############################################################################
 # Source Files
 ###############################################################################
 
-C_SOURCES  := $(wildcard $(SRC_DIR)/*.c)
-ASM_SOURCE := $(PLATFORM_DIR)/startup.s
+C_SOURCE   = $(SRC_DIR)/main.c
+ASM_SOURCE = $(PLATFORM_DIR)/startup.s
 
-C_OBJECTS  := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(C_SOURCES))
-ASM_OBJECT := $(OBJ_DIR)/startup.o
-
-OBJECTS := $(C_OBJECTS) $(ASM_OBJECT)
+OBJECTS = \
+$(OBJ_DIR)/main.o \
+$(OBJ_DIR)/startup.o
 
 ###############################################################################
 # Compiler Flags
 ###############################################################################
 
-CFLAGS := \
+CFLAGS = \
 -mcpu=cortex-m4 \
 -mthumb \
 -std=c11 \
@@ -66,39 +63,30 @@ CFLAGS := \
 # Linker Flags
 ###############################################################################
 
-LDFLAGS := \
+LDFLAGS = \
 -T$(PLATFORM_DIR)/linker.ld \
--Wl,-Map=$(BUILD_DIR)/$(TARGET).map
+-Wl,-Map=$(BUILD_DIR)/$(TARGET).map \
+-Wl,--gc-sections
 
 ###############################################################################
 # Default Target
 ###############################################################################
 
-.DEFAULT_GOAL := build
-
-build: directories \
-       $(BUILD_DIR)/$(TARGET).elf \
-       $(BUILD_DIR)/$(TARGET).hex \
-       $(BUILD_DIR)/$(TARGET).bin
-
-all: build flash debug
+all: directories $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
 ###############################################################################
 # Create Directories
 ###############################################################################
 
 directories:
-	if not exist "$(OBJ_DIR)" mkdir "$(OBJ_DIR)"
-	if not exist "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
+	mkdir -p $(OBJ_DIR)
+	mkdir -p $(BUILD_DIR)
 
 ###############################################################################
-# Compile C Sources
+# Compile C
 ###############################################################################
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/gpio.o: $(SRC_DIR)/gpio.c
+$(OBJ_DIR)/main.o: $(C_SOURCE)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ###############################################################################
@@ -113,7 +101,7 @@ $(OBJ_DIR)/startup.o: $(ASM_SOURCE)
 ###############################################################################
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -nostartfiles -o $@
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SIZE) $@
 
 ###############################################################################
@@ -131,11 +119,20 @@ $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
 ###############################################################################
+# Clean
+###############################################################################
+
+clean:
+	rm -rf $(OBJ_DIR)
+	rm -rf $(BUILD_DIR)
+
+###############################################################################
 # Flash Firmware
 ###############################################################################
 
 flash: $(BUILD_DIR)/$(TARGET).bin
 	$(LMFLASH) -q ek-tm4c123gxl -v -r "$(CURDIR)/$<"
+
 
 ###############################################################################
 # Start OpenOCD Debug Server
@@ -145,15 +142,7 @@ debug:
 	$(OPENOCD) -f board/ti_ek-tm4c123gxl.cfg
 
 ###############################################################################
-# Clean
-###############################################################################
-
-clean:
-	rm -rf $(OBJ_DIR)
-	rm -rf $(BUILD_DIR)
-
-###############################################################################
 # Phony Targets
 ###############################################################################
 
-.PHONY: build all directories flash debug clean
+.PHONY: all clean directories flash debug
