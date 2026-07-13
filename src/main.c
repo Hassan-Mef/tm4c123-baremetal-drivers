@@ -51,20 +51,33 @@ int main(void)
     //     delay();
     // }
 
+int status;
+   gpio_configType redLed =
+{
+    .port = GPIO_PORT_F,
+    .pin  = GPIO_PIN_1,
+    .mode = GPIO_MODE_OUTPUT
+};
 
-    timer_configType timer0 =
-    {
-        .number     = TIMER_0,
-        .channel    = TIMER_B,
-        .mode       = TIMER_MODE_PERIODIC,
-        .direction  = TIMER_COUNT_DOWN,
-        .size       = TIMER_SIZE_16_BIT,
-        .prescaler  = 79U
-    };
+gpio_init(&redLed);
 
-    timer_init(&timer0);
+timer_configType timer0 =
+{
+    .number     = TIMER_0,
+    .channel    = TIMER_AB,
+    .mode       = TIMER_MODE_PERIODIC,
+    .direction  = TIMER_COUNT_DOWN,
+    .size       = TIMER_SIZE_32_BIT,
+    .prescaler  = 0U,
+    .unit       = TIMER_MS
+};
 
-    while (1)
-    {
-    }
+timer_init(&timer0);
+
+while (1)
+{
+    status = gpio_digitalToggle(&redLed);
+
+    status = timer_blockingDelay(&timer0, 5000U); // 50 seconds delay
+}
 }

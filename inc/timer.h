@@ -25,6 +25,9 @@
     (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCTIMER_OFFSET))
 
 
+#define SYSTEM_CLOCK_HZ    (16000000U)
+
+
 /* Timer Base Addresses */
 #define TIMER0_BASE  0x40030000U
 #define TIMER1_BASE  0x40031000U
@@ -116,6 +119,13 @@ typedef enum
     TIMER_CHANNEL_INVALID
 } timer_subType;
 
+typedef enum
+{
+    TIMER_US,
+    TIMER_MS,
+    TIMER_SEC
+} timer_timeUnitType;
+
 /* Interrupt related fields */
 
 /******************************************* Data Types *******************************************/
@@ -129,6 +139,7 @@ typedef struct
     timer_countDirType direction;
     timer_sizeType size;
 
+    timer_timeUnitType unit;
     uint8_t prescaler;
     /*interrupt related fields*/
 
@@ -230,8 +241,6 @@ typedef struct
 /*************************************** Function Prototypes **************************************/
 
 timer_errorType timer_init(timer_configType * config);
+timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay);
 
 #endif
-
-
-

@@ -70,7 +70,7 @@ timer_errorType timer_init(timer_configType *config)
     /* Enable Timer Clock for bus */
     SYSCTL_RCGCTIMER |= (1U << config->number);
 
-    /* Disable selected timer before applying configuration */ 
+    /* Disable selected timer before applying configuration */
     switch (config->channel)
     {
     case TIMER_A:
@@ -187,6 +187,143 @@ timer_errorType timer_init(timer_configType *config)
         /* Configure prescaler */
         timer->GPTMTAPR = config->prescaler;
 
+        break;
+    default:
+        return TIMER_INVALID_CHANNEL;
+    }
+
+    return TIMER_SUCCESS;
+}
+
+timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
+{
+    timer_registerType *timer = NULL;
+
+    /* Verify configuration pointer */
+    if (config == NULL)
+    {
+        return TIMER_NULL_POINTER;
+    }
+
+    /* Verify timer number */
+    if (config->number >= TIMER_INVALID)
+    {
+        return TIMER_INVALID_TIMER;
+    }
+
+    /* Verify timer channel */
+    if (config->channel >= TIMER_CHANNEL_INVALID)
+    {
+        return TIMER_INVALID_CHANNEL;
+    }
+
+    timer = timerBase[config->number];
+
+    /* Disable selected timer before applying configuration */
+    switch (config->channel)
+    {
+    case TIMER_A:
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
+        break;
+
+    case TIMER_B:
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TBEN_BIT);
+        break;
+
+    case TIMER_AB:
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
+        break;
+    }
+
+    /* Calculate Delay value */
+
+    uint32_t timerFrequency;
+    uint32_t timerCounts;
+
+    timerFrequency = SYSTEM_CLOCK_HZ / (config->prescaler + 1U);
+
+    switch (config->unit)
+    {
+    case TIMER_US:
+
+        timerCounts = (timerFrequency / 1000000U) * delay;
+        break;
+
+    case TIMER_MS:
+
+        timerCounts = (timerFrequency / 1000U) * delay;
+        break;
+
+    case TIMER_SEC:
+
+        timerCounts = timerFrequency * delay;
+        break;
+
+    default:
+
+        return TIMER_INVALID_CONFIG;
+    }
+
+    switch (config->channel)
+    {
+    case TIMER_A:
+        /*Load delay in Timer A */
+        timer->GPTMTAILR = timerCounts;
+
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        /*Enabling Timer*/
+        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+        /* polling timeout*/
+        while ((timer->GPTMRIS & (1U << GPTMRIS_TATORIS_BIT)) == 0U);
+
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        /* Disabling Timer*/
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
+
+        break;
+    case TIMER_B:
+        /*Load delay in Timer B */
+        timer->GPTMTBILR = timerCounts;
+
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
+
+        /*Enabling Timer*/
+        timer->GPTMCTL |= (1U << GPTMCTL_TBEN_BIT);
+
+        /* polling timeout*/
+        while ((timer->GPTMRIS & (1U << GPTMRIS_TBTORIS_BIT)) == 0U);
+
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
+
+        /* Disabling Timer*/
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TBEN_BIT);
+        break;
+    case TIMER_AB:
+        /*Load delay in both timers */
+        timer->GPTMTAILR = timerCounts;
+        
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        /*Enabling Timer*/
+        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+        /* polling timeout*/
+        while ((timer->GPTMRIS & (1U << GPTMRIS_TATORIS_BIT)) == 0U);
+
+        /* Clear timeout*/
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        /* Disabling Timer*/
+        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
+        
         break;
     default:
         return TIMER_INVALID_CHANNEL;
