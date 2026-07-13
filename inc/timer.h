@@ -47,12 +47,16 @@
 #define GPTMCTL_TBEN_BIT          (8U)
 
 #define GPTMTAMR_TACDIR_BIT       (4U)
+#define GPTMTBMR_TBCDIR_BIT       (4U)
 
 #define GPTMIMR_TATOIM_BIT        (0U)
+#define GPTMIMR_TBTOIM_BIT        (8U)
 
 #define GPTMRIS_TATORIS_BIT       (0U)
+#define GPTMRIS_TBTORIS_BIT       (8U)
 
 #define GPTMICR_TATOCINT_BIT      (0U)
+#define GPTMICR_TBTOCINT_BIT      (8U)
 
 /****************************************** Enumerations ******************************************/
 
@@ -74,6 +78,8 @@ typedef enum
     TIMER_INVALID_CONFIG,
     TIMER_INVALID_MODE,
     TIMER_NULL_POINTER,
+    TIMER_INVALID_CHANNEL,
+    TIMER_INVALID_SIZE,
 } timer_errorType;
 
 typedef enum
@@ -102,6 +108,14 @@ typedef enum
     TIMER_SIZE_INVALID
 } timer_sizeType;
 
+typedef enum
+{
+    TIMER_A,
+    TIMER_B,
+    TIMER_AB,
+    TIMER_CHANNEL_INVALID
+} timer_subType;
+
 /* Interrupt related fields */
 
 /******************************************* Data Types *******************************************/
@@ -109,11 +123,15 @@ typedef enum
 typedef struct 
 {
     timer_numberType number;
+    timer_subType channel;
+
     timer_modeType mode;
     timer_countDirType direction;
     timer_sizeType size;
+
     uint8_t prescaler;
     /*interrupt related fields*/
+
 } timer_configType;
 
 

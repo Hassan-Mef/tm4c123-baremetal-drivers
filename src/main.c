@@ -55,6 +55,7 @@ int main(void)
     timer_configType timer0 =
     {
         .number     = TIMER_0,
+        .channel    = TIMER_B,
         .mode       = TIMER_MODE_PERIODIC,
         .direction  = TIMER_COUNT_DOWN,
         .size       = TIMER_SIZE_16_BIT,
