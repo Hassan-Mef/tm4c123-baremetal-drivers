@@ -264,70 +264,56 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
         return TIMER_INVALID_CONFIG;
     }
 
+    volatile uint32_t *loadRegister = NULL;
+    uint32_t enableBit;
+    uint32_t timeoutBit;
+    uint32_t clearBit;
+
     switch (config->channel)
     {
     case TIMER_A:
-        /*Load delay in Timer A */
-        timer->GPTMTAILR = timerCounts;
-
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
-        /*Enabling Timer*/
-        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
-
-        /* polling timeout*/
-        while ((timer->GPTMRIS & (1U << GPTMRIS_TATORIS_BIT)) == 0U);
-
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
-        /* Disabling Timer*/
-        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
-
+        loadRegister = &timer->GPTMTAILR;
+        enableBit = GPTMCTL_TAEN_BIT;
+        timeoutBit = GPTMRIS_TATORIS_BIT;
+        clearBit = GPTMICR_TATOCINT_BIT;
         break;
+
     case TIMER_B:
-        /*Load delay in Timer B */
-        timer->GPTMTBILR = timerCounts;
-
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
-
-        /*Enabling Timer*/
-        timer->GPTMCTL |= (1U << GPTMCTL_TBEN_BIT);
-
-        /* polling timeout*/
-        while ((timer->GPTMRIS & (1U << GPTMRIS_TBTORIS_BIT)) == 0U);
-
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
-
-        /* Disabling Timer*/
-        timer->GPTMCTL &= ~(1U << GPTMCTL_TBEN_BIT);
+        loadRegister = &timer->GPTMTBILR;
+        enableBit = GPTMCTL_TBEN_BIT;
+        timeoutBit = GPTMRIS_TBTORIS_BIT;
+        clearBit = GPTMICR_TBTOCINT_BIT;
         break;
+
     case TIMER_AB:
-        /*Load delay in both timers */
-        timer->GPTMTAILR = timerCounts;
-        
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
-        /*Enabling Timer*/
-        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
-
-        /* polling timeout*/
-        while ((timer->GPTMRIS & (1U << GPTMRIS_TATORIS_BIT)) == 0U);
-
-        /* Clear timeout*/
-        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
-        /* Disabling Timer*/
-        timer->GPTMCTL &= ~(1U << GPTMCTL_TAEN_BIT);
-        
+        loadRegister = &timer->GPTMTAILR;
+        enableBit = GPTMCTL_TAEN_BIT;
+        timeoutBit = GPTMRIS_TATORIS_BIT;
+        clearBit = GPTMICR_TATOCINT_BIT;
         break;
+
     default:
         return TIMER_INVALID_CHANNEL;
     }
+
+    /* Load delay value */
+    *loadRegister = timerCounts;
+
+    /* Clear previous timeout */
+    timer->GPTMICR = (1U << clearBit);
+
+    /* Enable timer */
+    timer->GPTMCTL |= (1U << enableBit);
+
+    /* Wait for timeout */
+    while ((timer->GPTMRIS & (1U << timeoutBit)) == 0U)
+        ;
+
+    /* Clear timeout flag */
+    timer->GPTMICR = (1U << clearBit);
+
+    /* Disable timer */
+    timer->GPTMCTL &= ~(1U << enableBit);
 
     return TIMER_SUCCESS;
 }
