@@ -20,8 +20,7 @@ static timer_registerType *const timerBase[] =
         TIMER2,
         TIMER3,
         TIMER4,
-        TIMER5
-    };
+        TIMER5};
 
 typedef struct
 {
@@ -36,10 +35,57 @@ static const timer_irqChannelType timerIrqTable[] =
         {.A = TIMER2A_IRQ, .B = TIMER2B_IRQ},
         {.A = TIMER3A_IRQ, .B = TIMER3B_IRQ},
         {.A = TIMER4A_IRQ, .B = TIMER4B_IRQ},
-        {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}
-    };
+        {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}};
+
+static void (*timerCallback[TIMER_INVALID])(void) =
+    {
+        NULL};
 
 /************************************* Function Implementations************************************/
+
+/**
+ * @brief timer_start : Starts a configured timer.
+ *
+ * @param timer : Pointer to timer registers.
+ * @param config : Pointer to timer configuration.
+ * @param timerCounts : Timer load value.
+ */
+static void timer_loadAndStart(timer_registerType *timer, timer_configType *config, uint32_t timerCounts)
+{
+    switch (config->channel)
+    {
+    case TIMER_A:
+
+        timer->GPTMTAILR = timerCounts;
+
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+        break;
+
+    case TIMER_B:
+
+        timer->GPTMTBILR = timerCounts;
+
+        timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
+
+        timer->GPTMCTL |= (1U << GPTMCTL_TBEN_BIT);
+
+        break;
+
+    case TIMER_AB:
+
+        timer->GPTMTAILR = timerCounts;
+
+        timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+        timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+        break;
+    }
+}
+
 /**
  * @brief Timer_init : Initializes a timer.
  *
@@ -112,6 +158,8 @@ timer_errorType timer_init(timer_configType *config)
         timer->GPTMCFG = 0x0U;
     }
 
+    timer_irqNumberType irqNumber;
+
     switch (config->channel)
     {
     case TIMER_A:
@@ -147,16 +195,16 @@ timer_errorType timer_init(timer_configType *config)
         if (config->interrupt == TIMER_INTERRUPT_ENABLE)
         {
             timer->GPTMIMR |= (1U << GPTMIMR_TATOIM_BIT);
+            /* Enable NVIC interrupt for the timer */
+            irqNumber = timerIrqTable[config->number].A;
+
+            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         }
         else
         {
             timer->GPTMIMR &= ~(1U << GPTMIMR_TATOIM_BIT);
         }
 
-        /* Enable NVIC interrupt for the timer */
-        timer_irqNumberType irqNumber = timerIrqTable[config->number].A;
-
-        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         break;
 
     case TIMER_B:
@@ -192,16 +240,15 @@ timer_errorType timer_init(timer_configType *config)
         if (config->interrupt == TIMER_INTERRUPT_ENABLE)
         {
             timer->GPTMIMR |= (1U << GPTMIMR_TBTOIM_BIT);
+            /* Enable NVIC interrupt for the timer */
+            irqNumber = timerIrqTable[config->number].A;
+
+            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         }
         else
         {
             timer->GPTMIMR &= ~(1U << GPTMIMR_TBTOIM_BIT);
         }
-
-        /* Enable NVIC interrupt for the timer */
-        timer_irqNumberType irqNumber = timerIrqTable[config->number].B;
-
-        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
 
         break;
     case TIMER_AB:
@@ -238,16 +285,15 @@ timer_errorType timer_init(timer_configType *config)
         if (config->interrupt == TIMER_INTERRUPT_ENABLE)
         {
             timer->GPTMIMR |= (1U << GPTMIMR_TATOIM_BIT);
+            /* Enable NVIC interrupt for the timer */
+            irqNumber = timerIrqTable[config->number].A;
+
+            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         }
         else
         {
             timer->GPTMIMR &= ~(1U << GPTMIMR_TATOIM_BIT);
         }
-        
-        /* Enable NVIC interrupt for the timer */
-        timer_irqNumberType irqNumber = timerIrqTable[config->number].A;
-
-        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         break;
     default:
         return TIMER_INVALID_CHANNEL;
@@ -376,5 +422,110 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
     /* Disable timer */
     timer->GPTMCTL &= ~(1U << enableBit);
 
+    return TIMER_SUCCESS;
+}
+
+timer_errorType timer_start(timer_configType *config, uint32_t delay)
+{
+    timer_registerType *timer = NULL;
+
+    /* Verify configuration pointer */
+    if (config == NULL)
+    {
+        return TIMER_NULL_POINTER;
+    }
+
+    /* Verify timer number */
+    if (config->number >= TIMER_INVALID)
+    {
+        return TIMER_INVALID_TIMER;
+    }
+
+    /* Verify timer channel */
+    if (config->channel >= TIMER_CHANNEL_INVALID)
+    {
+        return TIMER_INVALID_CHANNEL;
+    }
+
+    timer = timerBase[config->number];
+
+    /* Calculate timer counts */
+    uint32_t timerFrequency;
+    uint32_t timerCounts;
+
+    timerFrequency = SYSTEM_CLOCK_HZ / (config->prescaler + 1U);
+
+    switch (config->unit)
+    {
+        case TIMER_US:
+            timerCounts = (timerFrequency / 1000000U) * delay;
+            break;
+
+        case TIMER_MS:
+            timerCounts = (timerFrequency / 1000U) * delay;
+            break;
+
+        case TIMER_SEC:
+            timerCounts = timerFrequency * delay;
+            break;
+
+        default:
+            return TIMER_INVALID_CONFIG;
+    }
+
+    switch (config->channel)
+    {
+        case TIMER_A:
+
+            timer->GPTMTAILR = timerCounts;
+            timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+            timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+            break;
+
+        case TIMER_B:
+
+            timer->GPTMTBILR = timerCounts;
+            timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
+            timer->GPTMCTL |= (1U << GPTMCTL_TBEN_BIT);
+
+            break;
+
+        case TIMER_AB:
+
+            timer->GPTMTAILR = timerCounts;
+            timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+            timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
+
+            break;
+
+        default:
+            return TIMER_INVALID_CHANNEL;
+    }
+
+    return TIMER_SUCCESS;
+}
+
+timer_errorType timer_setCallback(timer_numberType timer, void (*callback)(void))
+{
+    if (timer >= TIMER_INVALID)
+    {
+        return TIMER_INVALID_TIMER;
+    }
+
+    timerCallback[timer] = callback;
+
+    return TIMER_SUCCESS;
+}
+
+timer_errorType timer_interruptHandler(timer_numberType timer)
+{
+
+    timerBase[timer]->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
+
+    if (timerCallback[timer] != NULL)
+    {
+        timerCallback[timer]();
+    }
     return TIMER_SUCCESS;
 }

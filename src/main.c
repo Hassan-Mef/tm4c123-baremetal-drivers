@@ -20,6 +20,18 @@ static void delay(void)
     }
 }
 
+   gpio_configType redLed =
+{
+    .port = GPIO_PORT_F,
+    .pin  = GPIO_PIN_1,
+    .mode = GPIO_MODE_OUTPUT
+};
+
+
+static void ledCallback(void)
+{
+    gpio_digitalToggle(&redLed);
+}
 /************************************** Main Implementation ***************************************/
 
 int main(void)
@@ -51,15 +63,9 @@ int main(void)
     //     delay();
     // }
 
-int status;
-   gpio_configType redLed =
-{
-    .port = GPIO_PORT_F,
-    .pin  = GPIO_PIN_1,
-    .mode = GPIO_MODE_OUTPUT
-};
-
 gpio_init(&redLed);
+
+
 
 timer_configType timer0 =
 {
@@ -69,15 +75,23 @@ timer_configType timer0 =
     .direction  = TIMER_COUNT_DOWN,
     .size       = TIMER_SIZE_32_BIT,
     .prescaler  = 0U,
-    .unit       = TIMER_MS
+    .unit       = TIMER_MS,
+    .interrupt  = TIMER_INTERRUPT_ENABLE
 };
 
 timer_init(&timer0);
 
+timer_setCallback(TIMER_0, ledCallback);
+
+timer_registerType *timer = TIMER0;
+
+timer_start(&timer0, 1000U);
+
 while (1)
 {
-    status = gpio_digitalToggle(&redLed);
+    // status = gpio_digitalToggle(&redLed);
 
-    status = timer_blockingDelay(&timer0, 5000U); // 50 seconds delay
+
+    // status = timer_blockingDelay(&timer0, 5000U); // 50 seconds delay
 }
 }

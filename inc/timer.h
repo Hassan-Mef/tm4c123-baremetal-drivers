@@ -282,5 +282,7 @@ typedef struct
 
 timer_errorType timer_init(timer_configType * config);
 timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay);
-
+timer_errorType timer_setCallback(timer_numberType timer, void (*callback)(void));
+timer_errorType timer_interruptHandler(timer_numberType timer);
+timer_errorType timer_start(timer_configType *config, uint32_t delay);
 #endif
