@@ -13,7 +13,6 @@
 /********************************************* Globals ********************************************/
 
 /* TIMER Table */
-
 static timer_registerType *const timerBase[] =
     {
         TIMER0,
@@ -21,7 +20,24 @@ static timer_registerType *const timerBase[] =
         TIMER2,
         TIMER3,
         TIMER4,
-        TIMER5};
+        TIMER5
+    };
+
+typedef struct
+{
+    timer_irqNumberType A;
+    timer_irqNumberType B;
+} timer_irqChannelType;
+
+static const timer_irqChannelType timerIrqTable[] =
+    {
+        {.A = TIMER0A_IRQ, .B = TIMER0B_IRQ},
+        {.A = TIMER1A_IRQ, .B = TIMER1B_IRQ},
+        {.A = TIMER2A_IRQ, .B = TIMER2B_IRQ},
+        {.A = TIMER3A_IRQ, .B = TIMER3B_IRQ},
+        {.A = TIMER4A_IRQ, .B = TIMER4B_IRQ},
+        {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}
+    };
 
 /************************************* Function Implementations************************************/
 /**
@@ -126,6 +142,21 @@ timer_errorType timer_init(timer_configType *config)
 
         /* Configure prescaler */
         timer->GPTMTAPR = config->prescaler;
+
+        /*Check for interrupt */
+        if (config->interrupt == TIMER_INTERRUPT_ENABLE)
+        {
+            timer->GPTMIMR |= (1U << GPTMIMR_TATOIM_BIT);
+        }
+        else
+        {
+            timer->GPTMIMR &= ~(1U << GPTMIMR_TATOIM_BIT);
+        }
+
+        /* Enable NVIC interrupt for the timer */
+        timer_irqNumberType irqNumber = timerIrqTable[config->number].A;
+
+        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         break;
 
     case TIMER_B:
@@ -156,6 +187,22 @@ timer_errorType timer_init(timer_configType *config)
 
         /* Configure prescaler */
         timer->GPTMTBPR = config->prescaler;
+
+        /*Check for interrupt */
+        if (config->interrupt == TIMER_INTERRUPT_ENABLE)
+        {
+            timer->GPTMIMR |= (1U << GPTMIMR_TBTOIM_BIT);
+        }
+        else
+        {
+            timer->GPTMIMR &= ~(1U << GPTMIMR_TBTOIM_BIT);
+        }
+
+        /* Enable NVIC interrupt for the timer */
+        timer_irqNumberType irqNumber = timerIrqTable[config->number].B;
+
+        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
+
         break;
     case TIMER_AB:
         /* Configure concatenated 32-bit timer using Timer A registers */
@@ -187,6 +234,20 @@ timer_errorType timer_init(timer_configType *config)
         /* Configure prescaler */
         timer->GPTMTAPR = config->prescaler;
 
+        /*Check for interrupt */
+        if (config->interrupt == TIMER_INTERRUPT_ENABLE)
+        {
+            timer->GPTMIMR |= (1U << GPTMIMR_TATOIM_BIT);
+        }
+        else
+        {
+            timer->GPTMIMR &= ~(1U << GPTMIMR_TATOIM_BIT);
+        }
+        
+        /* Enable NVIC interrupt for the timer */
+        timer_irqNumberType irqNumber = timerIrqTable[config->number].A;
+
+        NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         break;
     default:
         return TIMER_INVALID_CHANNEL;

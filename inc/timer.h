@@ -61,6 +61,17 @@
 #define GPTMICR_TATOCINT_BIT      (0U)
 #define GPTMICR_TBTOCINT_BIT      (8U)
 
+
+
+#define NVIC_BASE 0xE000E000U  
+#define NVIC_EN0 (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
+#define NVIC_EN1 (*(volatile uint32_t *)(NVIC_BASE + 0x104U))
+#define NVIC_EN2 (*(volatile uint32_t *)(NVIC_BASE + 0x108U))
+#define NVIC_EN3 (*(volatile uint32_t *)(NVIC_BASE + 0x10CU))
+
+#define NVIC_ENABLE_BASE ((volatile uint32_t *)0xE000E100U)
+
+
 /****************************************** Enumerations ******************************************/
 
 typedef enum
@@ -127,6 +138,34 @@ typedef enum
 } timer_timeUnitType;
 
 /* Interrupt related fields */
+typedef enum
+{
+    TIMER_INTERRUPT_DISABLE,
+    TIMER_INTERRUPT_ENABLE
+} timer_interruptType;
+
+
+typedef enum
+{
+    TIMER0A_IRQ = 19,
+    TIMER0B_IRQ = 20,
+
+    TIMER1A_IRQ = 21,
+    TIMER1B_IRQ = 22,
+
+    TIMER2A_IRQ = 23,
+    TIMER2B_IRQ = 24,
+
+    TIMER3A_IRQ = 35,
+    TIMER3B_IRQ = 36,
+
+    TIMER4A_IRQ = 70,
+    TIMER4B_IRQ = 71,
+
+    TIMER5A_IRQ = 92,
+    TIMER5B_IRQ = 93
+
+} timer_irqNumberType;
 
 /******************************************* Data Types *******************************************/
 
@@ -142,6 +181,7 @@ typedef struct
     timer_timeUnitType unit;
     uint8_t prescaler;
     /*interrupt related fields*/
+    timer_interruptType interrupt;
 
 } timer_configType;
 
