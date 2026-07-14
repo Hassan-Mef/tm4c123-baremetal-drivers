@@ -107,7 +107,10 @@ gpio_errorType gpio_digitalWrite(gpio_configType * const config, uint8_t pinStat
         return GPIO_ERROR_NULL_POINTER;
     }
 
-    if (pinState == NULL)
+    if (pinState > GPIO_STATE_HIGH)
+    {
+        return GPIO_ERROR_INVALID_STATE;
+    }
     {
         return GPIO_ERROR_INVALID_STATE;
     }
