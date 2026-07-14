@@ -220,14 +220,13 @@ static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t 
 
     case TIMER_MS:
 
-        *timerCounts = ((timerFrequency / 1000U) - TIMER_CALIBRATION_COUNTS) * delay;
-        // /* Compensate for software execution latency */
-        // *timerCounts -= TIMER_CALIBRATION_COUNTS;
+        *timerCounts = ((timerFrequency / 1000U) - TIMER_CALIBRATION_DELAY_MS) * delay;
+   
         break;
 
     case TIMER_SEC:
 
-        *timerCounts = (timerFrequency-17100) * delay;
+        *timerCounts = (timerFrequency- TIMER_CALIBRATION_DELAY_SEC) * delay;
         break;
 
     default:

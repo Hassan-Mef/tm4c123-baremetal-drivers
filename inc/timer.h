@@ -63,13 +63,9 @@
 
 #define SYSTEM_CLOCK_HZ    (80000000U)
 
-/**
- * @brief Timer calibration compensation.
- *
- * Number of timer counts subtracted from the calculated timer load
- * value to compensate for interrupt and software execution latency.
- */
-#define TIMER_CALIBRATION_COUNTS    (0U) // 17
+
+#define TIMER_CALIBRATION_DELAY_MS    (17U)
+#define TIMER_CALIBRATION_DELAY_SEC   (17100U)
 
 
 /* Timer Base Addresses */
