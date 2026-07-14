@@ -17,6 +17,42 @@
 
 /********************************************* Macros *********************************************/
 
+/*************************************** System Clock *********************************************/
+
+/* System Control Registers */
+#define SYSCTL_RIS                     (*(volatile uint32_t *)(SYSCTL_BASE + 0x050U))
+#define SYSCTL_RCC                     (*(volatile uint32_t *)(SYSCTL_BASE + 0x060U))
+#define SYSCTL_RCC2                    (*(volatile uint32_t *)(SYSCTL_BASE + 0x070U))
+
+/* RCC Register Fields */
+#define RCC_XTAL_MASK                  (0x1FU << 6U)
+#define RCC_XTAL_16MHZ                 (0x15U << 6U)
+/* RCC Register Fields */
+#define RCC_XTAL_MASK                  (0x1FU << 6U)
+#define RCC_XTAL_16MHZ                 (0x15U << 6U)
+
+#define RCC_USESYSDIV                  (1UL << 22U)
+
+/* RCC2 Register Fields */
+#define RCC2_USERCC2                   (1UL << 31U)
+#define RCC2_DIV400                    (1UL << 30U)
+
+#define RCC2_SYSDIV2_MASK              (0x3FU << 23U)
+#define RCC2_SYSDIV2_80MHZ             (0x02U << 23U)
+
+#define RCC2_SYSDIV2LSB                (1UL << 22U)
+
+#define RCC2_PWRDN2                    (1UL << 13U)
+#define RCC2_BYPASS2                   (1UL << 11U)
+
+#define RCC2_OSCSRC2_MASK              (0x7U << 4U)
+#define RCC2_OSCSRC2_MOSC              (0x0U << 4U)
+
+/* RIS Register Fields */
+#define RIS_PLLLRIS                    (1UL << 6U)
+
+
+
 #define SYSCTL_BASE                 0x400FE000U
 
 #define SYSCTL_RCGCTIMER_OFFSET     0x604U
@@ -25,7 +61,15 @@
     (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCTIMER_OFFSET))
 
 
-#define SYSTEM_CLOCK_HZ    (15949900U)
+#define SYSTEM_CLOCK_HZ    (80000000U)
+
+/**
+ * @brief Timer calibration compensation.
+ *
+ * Number of timer counts subtracted from the calculated timer load
+ * value to compensate for interrupt and software execution latency.
+ */
+#define TIMER_CALIBRATION_COUNTS    (0U) // 17
 
 
 /* Timer Base Addresses */

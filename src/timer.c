@@ -38,8 +38,56 @@ static const timer_irqChannelType timerIrqTable[] =
         {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}};
 
 static void (*timerCallback[TIMER_INVALID])(void) = {NULL};
-
+static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations************************************/
+
+/**
+ * @brief clock_init80MHz : Configures the system clock to 80 MHz.
+ *
+ * Configures the Main Oscillator (MOSC) and Phase-Locked Loop (PLL)
+ * to generate an 80 MHz system clock using the onboard 16 MHz crystal.
+ */
+static void clock_init80MHz(void)
+{
+    /* Use RCC2 register for advanced clock configuration */
+    SYSCTL_RCC2 |= RCC2_USERCC2;
+    SYSCTL_RCC  |= RCC_USESYSDIV;
+
+    /* Bypass PLL while configuring the clock */
+    SYSCTL_RCC2 |= RCC2_BYPASS2;
+
+    /* Configure the external crystal frequency to 16 MHz */
+    SYSCTL_RCC &= ~RCC_XTAL_MASK;
+    SYSCTL_RCC |= RCC_XTAL_16MHZ;
+
+    /* Select Main Oscillator (MOSC) as PLL clock source */
+    SYSCTL_RCC2 &= ~RCC2_OSCSRC2_MASK;
+    SYSCTL_RCC2 |= RCC2_OSCSRC2_MOSC;
+
+    /* Enable the system clock divider */
+    SYSCTL_RCC |= RCC_USESYSDIV;
+
+    /* Power up the PLL */
+    SYSCTL_RCC2 &= ~RCC2_PWRDN2;
+
+    /* Enable 400 MHz PLL operation */
+    SYSCTL_RCC2 |= RCC2_DIV400;
+
+    /* Configure system clock divider for 80 MHz */
+    SYSCTL_RCC2 &= ~RCC2_SYSDIV2_MASK;
+    SYSCTL_RCC2 |= RCC2_SYSDIV2_80MHZ;
+
+    /* Clear additional divider LSB */
+    SYSCTL_RCC2 &= ~RCC2_SYSDIV2LSB;
+
+    /* Wait until PLL locks */
+    while ((SYSCTL_RIS & RIS_PLLLRIS) == 0U)
+    {
+    }
+
+    /* Switch system clock source to PLL */
+    SYSCTL_RCC2 &= ~RCC2_BYPASS2;
+}
 
 /**
  * @brief timer_loadAndStart : Loads timer value and starts the timer.
@@ -149,7 +197,18 @@ static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t 
     }
 
     /* Calculate timer frequency */
-    timerFrequency = SYSTEM_CLOCK_HZ / (config->prescaler + 1U);
+    if(config->size == TIMER_SIZE_16_BIT)
+    {
+        timerFrequency = SYSTEM_CLOCK_HZ / (config->prescaler + 1U);
+    }
+    else if(config->size == TIMER_SIZE_32_BIT)
+    {
+        timerFrequency = SYSTEM_CLOCK_HZ ;
+    }
+    else
+    {
+        return TIMER_INVALID_SIZE;
+    }
 
     /* Calculate timer counts based on selected time unit */
     switch (config->unit)
@@ -161,12 +220,14 @@ static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t 
 
     case TIMER_MS:
 
-        *timerCounts = (timerFrequency / 1000U) * delay;
+        *timerCounts = ((timerFrequency / 1000U) - TIMER_CALIBRATION_COUNTS) * delay;
+        // /* Compensate for software execution latency */
+        // *timerCounts -= TIMER_CALIBRATION_COUNTS;
         break;
 
     case TIMER_SEC:
 
-        *timerCounts = timerFrequency * delay;
+        *timerCounts = (timerFrequency-17100) * delay;
         break;
 
     default:
@@ -217,6 +278,15 @@ static void timer_disable(timer_registerType *timer, timer_subType channel)
  */
 timer_errorType timer_init(timer_configType *config)
 {
+
+    /* Configure system clock only once */
+    if (clockInitialized == 0U)
+    {
+        clock_init80MHz();
+        clockInitialized = 1U;
+    }
+
+
     timer_registerType *timer = NULL;
 
     /* Validate configuration */
@@ -327,7 +397,7 @@ timer_errorType timer_init(timer_configType *config)
         {
             timer->GPTMIMR |= (1U << GPTMIMR_TBTOIM_BIT);
             /* Enable NVIC interrupt for the timer */
-            irqNumber = timerIrqTable[config->number].A;
+            irqNumber = timerIrqTable[config->number].B;
 
             NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
         }
@@ -365,7 +435,7 @@ timer_errorType timer_init(timer_configType *config)
         }
 
         /* Configure prescaler */
-        timer->GPTMTAPR = config->prescaler;
+        timer->GPTMTAPR = 0;
 
         /*Check for interrupt */
         if (config->interrupt == TIMER_INTERRUPT_ENABLE)
@@ -419,6 +489,9 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
     {
         return status;
     }
+
+    /* Get timer base address */
+    timer = timerBase[config->number];
 
     volatile uint32_t *loadRegister = NULL;
     uint32_t enableBit;
