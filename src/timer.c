@@ -346,7 +346,7 @@ timer_errorType timer_init(timer_configType *config)
             /* Enable NVIC interrupt for the timer */
             irqNumber = timerIrqTable[config->number].A;
 
-            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
+            NVIC_ENABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] |= (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
         }
         else
         {
@@ -391,7 +391,7 @@ timer_errorType timer_init(timer_configType *config)
             /* Enable NVIC interrupt for the timer */
             irqNumber = timerIrqTable[config->number].B;
 
-            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
+            NVIC_ENABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] |= (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
         }
         else
         {
@@ -437,7 +437,7 @@ timer_errorType timer_init(timer_configType *config)
             /* Enable NVIC interrupt for the timer */
             irqNumber = timerIrqTable[config->number].A;
 
-            NVIC_ENABLE_BASE[irqNumber / 32U] |= (1U << (irqNumber % 32U));
+            NVIC_ENABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] |= (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
         }
         else
         {

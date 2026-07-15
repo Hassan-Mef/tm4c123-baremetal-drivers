@@ -107,8 +107,10 @@
 #define GPTMCFG_16_BIT                 (0x4U)
 #define GPTMCFG_32_BIT                 (0x0U)
 
-#define GPTM_MODE_ONE_SHOT   (1U)
-#define GPTM_MODE_PERIODIC   (2U)
+#define GPTM_MODE_ONE_SHOT             (1U)
+#define GPTM_MODE_PERIODIC             (2U)
+
+#define IRQ_REGISTER_DIVISION_FACTOR   (32U)
 
 #define NVIC_BASE                      0xE000E000U  
 #define NVIC_EN0                       (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
