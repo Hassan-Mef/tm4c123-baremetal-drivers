@@ -1,0 +1,425 @@
+/**************************************************************************************************
+* FILENAME : uart.c
+* DESCRIPTION : Contains UART driver function definitions.
+*
+* NOTES :
+*
+* AUTHOR : Hassan
+***************************************************************************************************/
+
+/*************************************** Header Inclusion*****************************************/
+#include "uart.h"
+#include "gpio.h"
+
+/********************************************* Globals ********************************************/
+
+static uart_registerType * const uartRegisters[] =
+{
+    UART0,
+    UART1,
+    UART2,
+    UART3,
+    UART4,
+    UART5,
+    UART6,
+    UART7
+};
+
+static const uint32_t uartClockMask[] =
+{
+    (1U << 0),
+    (1U << 1),
+    (1U << 2),
+    (1U << 3),
+    (1U << 4),
+    (1U << 5),
+    (1U << 6),
+    (1U << 7)
+};
+
+
+typedef struct
+{
+    gpio_portType port;
+    gpio_pinType txPin;
+    gpio_pinType rxPin;
+
+} uart_pinConfigType;
+
+
+static const uart_pinConfigType uartPins[] =
+{
+    /* UART0 */ 
+    {GPIO_PORT_A, GPIO_PIN_1, GPIO_PIN_0},
+    
+    /* UART1 */ 
+    {GPIO_PORT_B, GPIO_PIN_1, GPIO_PIN_0},
+
+    /* UART2 */ 
+    {GPIO_PORT_D, GPIO_PIN_7, GPIO_PIN_6},
+
+    /* UART3 */ 
+    {GPIO_PORT_C, GPIO_PIN_7, GPIO_PIN_6},
+
+    /* UART4 */ 
+    {GPIO_PORT_C, GPIO_PIN_5, GPIO_PIN_4},
+
+    /* UART5 */ 
+    {GPIO_PORT_E, GPIO_PIN_5, GPIO_PIN_4},
+
+    /* UART6 */ 
+    {GPIO_PORT_D, GPIO_PIN_5, GPIO_PIN_4},
+
+    /* UART7 */ 
+    {GPIO_PORT_E, GPIO_PIN_1, GPIO_PIN_0}
+};
+
+static uint8_t clockInitialized = 0U;
+/************************************* Function Implementations***********************************/
+
+
+/**
+ * @brief clock_init80MHz : Configures the system clock to 80 MHz.
+ *
+ * Configures the Main Oscillator (MOSC) and Phase-Locked Loop (PLL)
+ * to generate an 80 MHz system clock using the onboard 16 MHz crystal.
+ */
+static void clock_init80MHz(void)
+{
+    /* Use RCC2 register for advanced clock configuration */
+    SYSCTL_RCC2 |= RCC2_USERCC2;
+    SYSCTL_RCC  |= RCC_USESYSDIV;
+
+    /* Bypass PLL while configuring the clock */
+    SYSCTL_RCC2 |= RCC2_BYPASS2;
+
+    /* Configure the external crystal frequency to 16 MHz */
+    SYSCTL_RCC &= ~RCC_XTAL_MASK;
+    SYSCTL_RCC |= RCC_XTAL_16MHZ;
+
+    /* Select Main Oscillator (MOSC) as PLL clock source */
+    SYSCTL_RCC2 &= ~RCC2_OSCSRC2_MASK;
+    SYSCTL_RCC2 |= RCC2_OSCSRC2_MOSC;
+
+    /* Enable the system clock divider */
+    SYSCTL_RCC |= RCC_USESYSDIV;
+
+    /* Power up the PLL */
+    SYSCTL_RCC2 &= ~RCC2_PWRDN2;
+
+    /* Enable 400 MHz PLL operation */
+    SYSCTL_RCC2 |= RCC2_DIV400;
+
+    /* Configure system clock divider for 80 MHz */
+    SYSCTL_RCC2 &= ~RCC2_SYSDIV2_MASK;
+    SYSCTL_RCC2 |= RCC2_SYSDIV2_80MHZ;
+
+    /* Clear additional divider LSB */
+    SYSCTL_RCC2 &= ~RCC2_SYSDIV2LSB;
+
+    /* Wait until PLL locks */
+    while ((SYSCTL_RIS & RIS_PLLLRIS) == 0U)
+    {
+    }
+
+    /* Switch system clock source to PLL */
+    SYSCTL_RCC2 &= ~RCC2_BYPASS2;
+}
+
+/**
+ * @brief  uart_init : Initializes the UART peripheral.
+ *
+ * @param uart : Pointer to UART register structure.
+ * @param baudRate : Desired baud rate.
+ *
+ * @return void
+ */
+static void uart_setBaudRate(uart_registerType *uart, uint32_t baudRate)
+{
+    uint32_t divisor;
+    uint32_t integer;
+    uint32_t fractional;
+
+    divisor = 16U * baudRate;
+
+    integer = SYSTEM_CLOCK_HZ / divisor;
+
+    fractional = ((SYSTEM_CLOCK_HZ % divisor) * 64U +
+                  (divisor / 2U)) / divisor;
+
+    uart->UARTIBRD = integer;
+    uart->UARTFBRD = fractional;
+}
+
+/**
+ * @brief uart_configurePins : Configures GPIO pins for the selected UART.
+ *
+ * @param uartNumber : UART peripheral number.
+ *
+ * @return uart_errorType
+ */
+static uart_errorType uart_configurePins(uart_numberType uartNumber)
+{
+    gpio_configType gpioConfig;
+    gpio_registersType *gpio = NULL;
+    const uart_pinConfigType *pins = NULL;
+
+    if (uartNumber >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    /* Get selected UART pin configuration */
+    pins = &uartPins[uartNumber];
+
+    /* Configure RX pin */
+    gpioConfig.port = pins->port;
+    gpioConfig.pin = pins->rxPin;
+    gpioConfig.mode = GPIO_MODE_ALTERNATE;
+
+    if (gpio_init(&gpioConfig) != GPIO_SUCCESS)
+    {
+        return UART_INVALID_CONFIG;
+    }
+
+    /* Configure TX pin */
+    gpioConfig.pin = pins->txPin;
+
+    if (gpio_init(&gpioConfig) != GPIO_SUCCESS)
+    {
+        return UART_INVALID_CONFIG;
+    }
+
+    /* Get GPIO register pointer */
+    switch (pins->port)
+    {
+        case GPIO_PORT_A:
+            gpio = GPIOA;
+            break;
+
+        case GPIO_PORT_B:
+            gpio = GPIOB;
+            break;
+
+        case GPIO_PORT_C:
+            gpio = GPIOC;
+            break;
+
+        case GPIO_PORT_D:
+            gpio = GPIOD;
+            break;
+
+        case GPIO_PORT_E:
+            gpio = GPIOE;
+            break;
+
+        case GPIO_PORT_F:
+            gpio = GPIOF;
+            break;
+
+        default:
+            return UART_INVALID_CONFIG;
+    }
+
+    /* Disable analog function */
+    gpio->AMSEL &= ~(1U << pins->rxPin);
+    gpio->AMSEL &= ~(1U << pins->txPin);
+
+    /* Configure GPIO Port Control for UART alternate function */
+
+    /* RX */
+    gpio->PCTL &= ~(0xFU << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
+    gpio->PCTL |=  (GPIO_PCTL_UART << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
+
+    /* TX */
+    gpio->PCTL &= ~(0xFU << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
+    gpio->PCTL |=  (GPIO_PCTL_UART << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
+
+    return UART_SUCCESS;
+}
+
+/**
+ * @brief uart_init : Initializes the selected UART peripheral.
+ *
+ * @param config : Pointer to UART configuration.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_init(uart_configType *config)
+{
+      /* Configure system clock only once */
+    if (clockInitialized == 0U)
+    {
+        clock_init80MHz();
+        clockInitialized = 1U;
+    }
+
+    uart_registerType *uart = NULL;
+    volatile uint32_t delay;
+
+    /* Validate input pointer */
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    /* Validate UART number */
+    if (config->number >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    /* Validate baud rate */
+    if (config->baudRate == 0U)
+    {
+        return UART_INVALID_BAUDRATE;
+    }
+
+    /* Enable UART module clock */
+    SYSCTL_RCGCUART |= uartClockMask[config->number];
+
+    /* Wait for UART clock to stabilize */
+    delay = SYSCTL_RCGCUART;
+    (void)delay;
+
+    /* Configure UART GPIO pins */
+    if (uart_configurePins(config->number) != UART_SUCCESS)
+    {
+        return UART_INVALID_CONFIG;
+    }
+
+    /* Get UART register pointer */
+    uart = uartRegisters[config->number];
+
+    /* Disable UART before configuration */
+    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
+
+    /* Configure baud rate */
+    uart_setBaudRate(uart, config->baudRate);
+
+    /* Configure frame format
+     *  - 8 data bits
+     *  - No parity
+     *  - One stop bit
+     *  - FIFO enabled
+     */
+    uart->UARTLCRH =
+        (UART_WORD_LENGTH_8 << UARTLCRH_WLEN_BIT) |
+        (UART_FIFO_ENABLE << UARTLCRH_FEN_BIT);
+
+    /* Select System Clock as UART clock source */
+    uart->UARTCC = 0U;
+
+    /* Enable transmitter and receiver */
+    uart->UARTCTL |=
+        (1U << UARTCTL_TXE_BIT) |
+        (1U << UARTCTL_RXE_BIT);
+
+    /* Enable UART */
+    uart->UARTCTL |= (1U << UARTCTL_UARTEN_BIT);
+
+    return UART_SUCCESS;
+}
+/**
+ * @brief uart_sendCharacter : Sends a single character over UART.
+ *
+ * @param config : Pointer to UART configuration.
+ * @param data   : Character to transmit.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_sendCharacter(uart_configType *config, char data)
+{
+    uart_registerType *uart = NULL;
+
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (config->number >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    uart = uartRegisters[config->number];
+
+    /* Wait until TX FIFO is not full */
+    while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))
+    {
+    }
+
+    /* Transmit character */
+    uart->UARTDR = (uint32_t)data;
+
+    return UART_SUCCESS;
+}
+
+/**
+ * @brief uart_sendString : Sends a NULL terminated string.
+ *
+ * @param config : Pointer to UART configuration.
+ * @param data   : String to transmit.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_sendString(uart_configType *config, char *data)
+{
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (data == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    while (*data != '\0')
+    {
+        uart_sendCharacter(config, *data);
+        data++;
+    }
+
+    return UART_SUCCESS;
+}
+
+/**
+ * @brief uart_sendString : Sends a NULL terminated string.
+ *
+ * @param config : Pointer to UART configuration.
+ * @param data   : String to transmit.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
+{
+    uart_registerType *uart = NULL;
+
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (data == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (config->number >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    uart = uartRegisters[config->number];
+
+    /* Wait until data is available */
+    while (uart->UARTFR & (1U << UARTFR_RXFE_BIT))
+    {
+    }
+
+    /* Read received character */
+    *data = (char)(uart->UARTDR & 0xFFU);
+
+    return UART_SUCCESS;
+}
