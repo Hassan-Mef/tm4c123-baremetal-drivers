@@ -14,13 +14,14 @@
 
 /* TIMER Table */
 static timer_registerType *const timerBase[] =
-    {
-        TIMER0,
-        TIMER1,
-        TIMER2,
-        TIMER3,
-        TIMER4,
-        TIMER5};
+{
+    TIMER0,
+    TIMER1,
+    TIMER2,
+    TIMER3,
+    TIMER4,
+    TIMER5
+};
 
 typedef struct
 {
@@ -29,20 +30,18 @@ typedef struct
 } timer_irqChannelType;
 
 static const timer_irqChannelType timerIrqTable[] =
-    {
-        {.A = TIMER0A_IRQ, .B = TIMER0B_IRQ},
-        {.A = TIMER1A_IRQ, .B = TIMER1B_IRQ},
-        {.A = TIMER2A_IRQ, .B = TIMER2B_IRQ},
-        {.A = TIMER3A_IRQ, .B = TIMER3B_IRQ},
-        {.A = TIMER4A_IRQ, .B = TIMER4B_IRQ},
-        {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}};
+{
+    {.A = TIMER0A_IRQ, .B = TIMER0B_IRQ},
+    {.A = TIMER1A_IRQ, .B = TIMER1B_IRQ},
+    {.A = TIMER2A_IRQ, .B = TIMER2B_IRQ},
+    {.A = TIMER3A_IRQ, .B = TIMER3B_IRQ},
+    {.A = TIMER4A_IRQ, .B = TIMER4B_IRQ},
+    {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}
+};
         
-
 
 static void (*timerCallback[TIMER_INVALID])(void) = {NULL, NULL, NULL, NULL, NULL, NULL};
-
-        
-
+     
 static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations************************************/
 
@@ -108,9 +107,7 @@ static void timer_loadAndStart(timer_registerType *timer, timer_configType *conf
     case TIMER_A:
 
         timer->GPTMTAILR = timerCounts;
-
         timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
         timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
 
         break;
@@ -118,9 +115,7 @@ static void timer_loadAndStart(timer_registerType *timer, timer_configType *conf
     case TIMER_B:
 
         timer->GPTMTBILR = timerCounts;
-
         timer->GPTMICR = (1U << GPTMICR_TBTOCINT_BIT);
-
         timer->GPTMCTL |= (1U << GPTMCTL_TBEN_BIT);
 
         break;
@@ -128,12 +123,11 @@ static void timer_loadAndStart(timer_registerType *timer, timer_configType *conf
     case TIMER_AB:
 
         timer->GPTMTAILR = timerCounts;
-
         timer->GPTMICR = (1U << GPTMICR_TATOCINT_BIT);
-
         timer->GPTMCTL |= (1U << GPTMCTL_TAEN_BIT);
 
         break;
+
     default:
         break;
     }
@@ -219,23 +213,18 @@ static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t 
     switch (config->unit)
     {
     case TIMER_US:
-
-        *timerCounts = (timerFrequency / 1000000U) * delay;
+        *timerCounts = (timerFrequency / TIMER_MICRO_DIVISION_FACTOR) * delay;
         break;
 
     case TIMER_MS:
-
-        *timerCounts = ((timerFrequency / 1000U) - TIMER_CALIBRATION_DELAY_MS) * delay;
-   
+        *timerCounts = ((timerFrequency / TIMER_MILLI_DIVISION_FACTOR) - TIMER_CALIBRATION_DELAY_MS) * delay;
         break;
 
     case TIMER_SEC:
-
         *timerCounts = (timerFrequency- TIMER_CALIBRATION_DELAY_SEC) * delay;
         break;
 
     default:
-
         return TIMER_INVALID_CONFIG;
     }
 
@@ -290,8 +279,8 @@ timer_errorType timer_init(timer_configType *config)
         clockInitialized = 1U;
     }
 
-
     timer_registerType *timer = NULL;
+    timer_irqNumberType irqNumber;
 
     /* Validate configuration */
     timer_errorType status = timer_validateConfig(config);
@@ -318,8 +307,7 @@ timer_errorType timer_init(timer_configType *config)
         timer->GPTMCFG = 0x0U;
     }
 
-    timer_irqNumberType irqNumber;
-
+    /* Configure timer channel */
     switch (config->channel)
     {
     case TIMER_A:
@@ -411,6 +399,7 @@ timer_errorType timer_init(timer_configType *config)
         }
 
         break;
+
     case TIMER_AB:
         /* Configure concatenated 32-bit timer using Timer A registers */
         /* Configure timer mode */
@@ -455,6 +444,7 @@ timer_errorType timer_init(timer_configType *config)
             timer->GPTMIMR &= ~(1U << GPTMIMR_TATOIM_BIT);
         }
         break;
+
     default:
         return TIMER_INVALID_CHANNEL;
     }
@@ -477,6 +467,12 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
 
     timer_errorType status;
     uint32_t timerCounts;
+    
+    /* Register pointers and bits */
+    volatile uint32_t *loadRegister = NULL;
+    uint32_t enableBit;
+    uint32_t timeoutBit;
+    uint32_t clearBit;
 
     /* Validate timer configuration */
     status = timer_validateConfig(config);
@@ -496,11 +492,6 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
 
     /* Get timer base address */
     timer = timerBase[config->number];
-
-    volatile uint32_t *loadRegister = NULL;
-    uint32_t enableBit;
-    uint32_t timeoutBit;
-    uint32_t clearBit;
 
     switch (config->channel)
     {
@@ -539,8 +530,7 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
     timer->GPTMCTL |= (1U << enableBit);
 
     /* Wait for timeout */
-    while ((timer->GPTMRIS & (1U << timeoutBit)) == 0U)
-        ;
+    while ((timer->GPTMRIS & (1U << timeoutBit)) == 0U);
 
     /* Clear timeout flag */
     timer->GPTMICR = (1U << clearBit);
@@ -563,6 +553,8 @@ timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay)
 timer_errorType timer_start(timer_configType *config, uint32_t delay)
 {
     timer_registerType *timer = NULL;
+    /* Calculate timer counts */
+    uint32_t timerCounts;
 
     /* Verify configuration pointer */
     timer_errorType status = timer_validateConfig(config);
@@ -572,9 +564,6 @@ timer_errorType timer_start(timer_configType *config, uint32_t delay)
     }
 
     timer = timerBase[config->number];
-
-    /* Calculate timer counts */
-    uint32_t timerCounts;
 
     /* Calculate timer load value */
     status = timer_calculateCounts(config, delay, &timerCounts);

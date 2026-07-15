@@ -53,9 +53,9 @@
 
 
 
-#define SYSCTL_BASE                     0x400FE000U
+#define SYSCTL_BASE                    0x400FE000U
 
-#define SYSCTL_RCGCTIMER_OFFSET         0x604U
+#define SYSCTL_RCGCTIMER_OFFSET        0x604U
 
 #define SYSCTL_RCGCTIMER \
     (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCTIMER_OFFSET))
@@ -63,7 +63,10 @@
 
 #define SYSTEM_CLOCK_HZ                (80000000U)
 
-
+#define TIMER_MAX_16_BIT_VALUE         (0xFFFFU)
+#define TIMER_MAX_32_BIT_VALUE         (0xFFFFFFFFU)
+#define TIMER_MICRO_DIVISION_FACTOR    (1000000U)
+#define TIMER_MILLI_DIVISION_FACTOR    (1000U)
 #define TIMER_CALIBRATION_DELAY_MS     (17U)
 #define TIMER_CALIBRATION_DELAY_SEC    (17100U)
 
@@ -78,38 +81,38 @@
 
 
 /* Timers */
-#define TIMER0 ((timer_registerType *) TIMER0_BASE)
-#define TIMER1 ((timer_registerType *) TIMER1_BASE)
-#define TIMER2 ((timer_registerType *) TIMER2_BASE)
-#define TIMER3 ((timer_registerType *) TIMER3_BASE)
-#define TIMER4 ((timer_registerType *) TIMER4_BASE)
-#define TIMER5 ((timer_registerType *) TIMER5_BASE)
+#define TIMER0                         ((timer_registerType *) TIMER0_BASE)
+#define TIMER1                         ((timer_registerType *) TIMER1_BASE)
+#define TIMER2                         ((timer_registerType *) TIMER2_BASE)
+#define TIMER3                         ((timer_registerType *) TIMER3_BASE)
+#define TIMER4                         ((timer_registerType *) TIMER4_BASE)
+#define TIMER5                         ((timer_registerType *) TIMER5_BASE)
 
 
-#define GPTMCTL_TAEN_BIT          (0U)
-#define GPTMCTL_TBEN_BIT          (8U)
+#define GPTMCTL_TAEN_BIT               (0U)
+#define GPTMCTL_TBEN_BIT               (8U)
 
-#define GPTMTAMR_TACDIR_BIT       (4U)
-#define GPTMTBMR_TBCDIR_BIT       (4U)
+#define GPTMTAMR_TACDIR_BIT            (4U)
+#define GPTMTBMR_TBCDIR_BIT            (4U)
 
-#define GPTMIMR_TATOIM_BIT        (0U)
-#define GPTMIMR_TBTOIM_BIT        (8U)
+#define GPTMIMR_TATOIM_BIT             (0U)
+#define GPTMIMR_TBTOIM_BIT             (8U)
 
-#define GPTMRIS_TATORIS_BIT       (0U)
-#define GPTMRIS_TBTORIS_BIT       (8U)
+#define GPTMRIS_TATORIS_BIT            (0U)
+#define GPTMRIS_TBTORIS_BIT            (8U)
 
-#define GPTMICR_TATOCINT_BIT      (0U)
-#define GPTMICR_TBTOCINT_BIT      (8U)
+#define GPTMICR_TATOCINT_BIT           (0U)
+#define GPTMICR_TBTOCINT_BIT           (8U)
 
 
 
-#define NVIC_BASE                 0xE000E000U  
-#define NVIC_EN0 (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
-#define NVIC_EN1 (*(volatile uint32_t *)(NVIC_BASE + 0x104U))
-#define NVIC_EN2 (*(volatile uint32_t *)(NVIC_BASE + 0x108U))
-#define NVIC_EN3 (*(volatile uint32_t *)(NVIC_BASE + 0x10CU))
+#define NVIC_BASE                      0xE000E000U  
+#define NVIC_EN0                       (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
+#define NVIC_EN1                       (*(volatile uint32_t *)(NVIC_BASE + 0x104U))
+#define NVIC_EN2                       (*(volatile uint32_t *)(NVIC_BASE + 0x108U))
+#define NVIC_EN3                       (*(volatile uint32_t *)(NVIC_BASE + 0x10CU))
 
-#define NVIC_ENABLE_BASE ((volatile uint32_t *)0xE000E100U)
+#define NVIC_ENABLE_BASE               ((volatile uint32_t *)0xE000E100U)
 
 
 /****************************************** Enumerations ******************************************/
@@ -224,8 +227,6 @@ typedef struct
     timer_interruptType interrupt;
 
 } timer_configType;
-
-
 
 typedef struct
 {
