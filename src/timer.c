@@ -300,11 +300,11 @@ timer_errorType timer_init(timer_configType *config)
     /* Configure timer as 16-bit split or 32-bit concatenated mode */
     if (config->size == TIMER_SIZE_16_BIT)
     {
-        timer->GPTMCFG = 0x4U;
+        timer->GPTMCFG = GPTMCFG_16_BIT;
     }
     else
     {
-        timer->GPTMCFG = 0x0U;
+        timer->GPTMCFG = GPTMCFG_32_BIT;
     }
 
     /* Configure timer channel */
@@ -315,11 +315,11 @@ timer_errorType timer_init(timer_configType *config)
         switch (config->mode)
         {
         case TIMER_MODE_ONE_SHOT:
-            timer->GPTMTAMR = 0x1U;
+            timer->GPTMTAMR = GPTM_MODE_ONE_SHOT;
             break;
 
         case TIMER_MODE_PERIODIC:
-            timer->GPTMTAMR = 0x2U;
+            timer->GPTMTAMR = GPTM_MODE_PERIODIC;
             break;
 
         default:
@@ -360,11 +360,11 @@ timer_errorType timer_init(timer_configType *config)
         switch (config->mode)
         {
         case TIMER_MODE_ONE_SHOT:
-            timer->GPTMTBMR = 0x1U;
+            timer->GPTMTBMR = GPTM_MODE_ONE_SHOT;
             break;
 
         case TIMER_MODE_PERIODIC:
-            timer->GPTMTBMR = 0x2U;
+            timer->GPTMTBMR = GPTM_MODE_PERIODIC;
             break;
 
         default:
@@ -406,11 +406,11 @@ timer_errorType timer_init(timer_configType *config)
         switch (config->mode)
         {
         case TIMER_MODE_ONE_SHOT:
-            timer->GPTMTAMR = 0x1U;
+            timer->GPTMTAMR = GPTM_MODE_ONE_SHOT;
             break;
 
         case TIMER_MODE_PERIODIC:
-            timer->GPTMTAMR = 0x2U;
+            timer->GPTMTAMR = GPTM_MODE_PERIODIC;
             break;
 
         default:
