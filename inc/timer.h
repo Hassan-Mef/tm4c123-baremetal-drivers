@@ -53,28 +53,28 @@
 
 
 
-#define SYSCTL_BASE                 0x400FE000U
+#define SYSCTL_BASE                     0x400FE000U
 
-#define SYSCTL_RCGCTIMER_OFFSET     0x604U
+#define SYSCTL_RCGCTIMER_OFFSET         0x604U
 
 #define SYSCTL_RCGCTIMER \
     (*(volatile uint32_t *)(SYSCTL_BASE + SYSCTL_RCGCTIMER_OFFSET))
 
 
-#define SYSTEM_CLOCK_HZ    (80000000U)
+#define SYSTEM_CLOCK_HZ                (80000000U)
 
 
-#define TIMER_CALIBRATION_DELAY_MS    (17U)
-#define TIMER_CALIBRATION_DELAY_SEC   (17100U)
+#define TIMER_CALIBRATION_DELAY_MS     (17U)
+#define TIMER_CALIBRATION_DELAY_SEC    (17100U)
 
 
 /* Timer Base Addresses */
-#define TIMER0_BASE  0x40030000U
-#define TIMER1_BASE  0x40031000U
-#define TIMER2_BASE  0x40032000U
-#define TIMER3_BASE  0x40033000U
-#define TIMER4_BASE  0x40034000U   
-#define TIMER5_BASE  0x40035000U
+#define TIMER0_BASE                    0x40030000U
+#define TIMER1_BASE                    0x40031000U
+#define TIMER2_BASE                    0x40032000U
+#define TIMER3_BASE                    0x40033000U
+#define TIMER4_BASE                    0x40034000U   
+#define TIMER5_BASE                    0x40035000U
 
 
 /* Timers */
@@ -103,7 +103,7 @@
 
 
 
-#define NVIC_BASE 0xE000E000U  
+#define NVIC_BASE                 0xE000E000U  
 #define NVIC_EN0 (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
 #define NVIC_EN1 (*(volatile uint32_t *)(NVIC_BASE + 0x104U))
 #define NVIC_EN2 (*(volatile uint32_t *)(NVIC_BASE + 0x108U))
@@ -323,6 +323,6 @@ typedef struct
 timer_errorType timer_init(timer_configType * config);
 timer_errorType timer_blockingDelay(timer_configType *config, uint32_t delay);
 timer_errorType timer_setCallback(timer_numberType timer, void (*callback)(void));
-void timer_interruptHandler(timer_numberType timer, timer_subType channel);
+timer_errorType timer_interruptHandler(timer_numberType timer, timer_subType channel);
 timer_errorType timer_start(timer_configType *config, uint32_t delay);
 #endif

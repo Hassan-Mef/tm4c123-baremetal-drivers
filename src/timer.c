@@ -36,8 +36,13 @@ static const timer_irqChannelType timerIrqTable[] =
         {.A = TIMER3A_IRQ, .B = TIMER3B_IRQ},
         {.A = TIMER4A_IRQ, .B = TIMER4B_IRQ},
         {.A = TIMER5A_IRQ, .B = TIMER5B_IRQ}};
+        
 
-static void (*timerCallback[TIMER_INVALID])(void) = {NULL};
+
+static void (*timerCallback[TIMER_INVALID])(void) = {NULL, NULL, NULL, NULL, NULL, NULL};
+
+        
+
 static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations************************************/
 
@@ -593,11 +598,11 @@ timer_errorType timer_start(timer_configType *config, uint32_t delay)
  * @param timer : Timer number.
  * @param channel : Timer channel.
  */
-void timer_interruptHandler(timer_numberType timer, timer_subType channel)
+timer_errorType timer_interruptHandler(timer_numberType timer, timer_subType channel)
 {
     if (timer >= TIMER_INVALID)
     {
-        return;
+        return TIMER_INVALID_TIMER;
     }
 
     switch (channel)
@@ -611,13 +616,15 @@ void timer_interruptHandler(timer_numberType timer, timer_subType channel)
         break;
 
     default:
-        return;
+        return TIMER_INVALID_CHANNEL;
     }
 
     if (timerCallback[timer] != NULL)
     {
         timerCallback[timer]();
     }
+
+    return TIMER_SUCCESS;
 }
 
 /**
