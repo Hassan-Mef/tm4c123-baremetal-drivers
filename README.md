@@ -29,7 +29,7 @@ towards a complete driver library and simple applications.
 - [x] Linker Script
 - [x] Makefile
 - [x] GPIO Driver
-- [ ] Timer Driver
+- [x] Timer Driver
 - [ ] UART Driver
 - [ ] LIN Driver
 - [ ] LIN Application
