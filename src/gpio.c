@@ -73,7 +73,7 @@ gpio_errorType gpio_init(gpio_configType * const config)
             gpio->DIR |= (1U << config->pin);
             break;
         case GPIO_MODE_ALTERNATE:
-            return GPIO_ERROR_UNDEFINED_MODE;
+            gpio->AFSEL |= (1U << config->pin);
             break;
         case GPIO_MODE_ANALOG:
             return GPIO_ERROR_UNDEFINED_MODE;
@@ -101,6 +101,7 @@ gpio_errorType gpio_digitalWrite(gpio_configType * const config, uint8_t pinStat
     gpio_registersType *gpio = NULL;
 
     /* Validate configuration parameters */
+
 
     if (config == NULL)
     {
