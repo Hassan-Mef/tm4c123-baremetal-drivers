@@ -356,7 +356,15 @@ uart_errorType uart_init(uart_configType *config)
     return UART_SUCCESS;
 }
 
-
+/**
+ * @brief uart_deInit : Deinitializes the selected UART peripheral.
+ * Disables the UART transmitter, receiver, UART interrupts,
+ * and the corresponding NVIC interrupt.
+ *
+ * @param config : Pointer to UART configuration.
+ *
+ * @return uart_errorType
+ */
 uart_errorType uart_deInit(uart_configType *config)
 {
     uart_registerType *uart = NULL;
@@ -508,6 +516,16 @@ uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
     return UART_SUCCESS;
 }
 
+/**
+ * @brief uart_getReceivedCharacter : Retrieves the last received UART character.
+ * Returns the character stored by the UART interrupt handler for
+ * the selected UART peripheral.
+ *
+ * @param uartNumber : UART peripheral number.
+ * @param data : Pointer to store the received character.
+ *
+ * @return uart_errorType
+ */
 uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data )
 {
     if (uartNumber >= UART_INVALID)
@@ -526,6 +544,16 @@ uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data )
     
 }
 
+/**
+ * @brief uart_interruptHandler : Handles UART receive interrupts.
+ * Reads the received character, clears the receive interrupt flag,
+ * stores the received data, and executes the registered callback
+ * function for the selected UART.
+ *
+ * @param uartNumber : UART peripheral number.
+ *
+ * @return uart_errorType
+ */
 uart_errorType uart_interruptHandler(uart_numberType uartNumber)
 {
     uart_registerType *uart = NULL;
@@ -553,6 +581,18 @@ uart_errorType uart_interruptHandler(uart_numberType uartNumber)
     return UART_SUCCESS;
 }
 
+/**
+ * @brief uart_setCallback : Registers a callback function for a UART.
+ *
+ * Associates a user-defined callback function with the selected
+ * UART peripheral. The callback is executed whenever a receive
+ * interrupt occurs.
+ *
+ * @param uartNumber : UART peripheral number.
+ * @param callback : Pointer to callback function.
+ *
+ * @return uart_errorType
+ */
 uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(void))
 {
     if (uartNumber >= UART_INVALID)
@@ -572,6 +612,14 @@ uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(voi
     
 }
 
+/**
+ * @brief uart_rxEchoCallback : Default UART receive callback.
+ *
+ * Retrieves the received character from the interrupt buffer and
+ * echoes it back through the UART that generated the interrupt.
+ *
+ * @return void
+ */
 static void uart_rxEchoCallback(void)
 {
     char ch;
