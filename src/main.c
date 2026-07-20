@@ -148,7 +148,19 @@ void uart1ToUart0Test(void)
     while (1)
     {
         uart_receiveCharacter(&uart1, &ch);
+
+    if (ch == '\r')
+    {
+        uart_sendString(&uart0, "\r\n");
+    }
+    else if (ch == '\n')
+    {
+        uart_sendString(&uart0, "\r\n");
+    }
+    else
+    {
         uart_sendCharacter(&uart0, ch);
+    }
     }
 }
 

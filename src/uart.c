@@ -436,6 +436,16 @@ uart_errorType uart_sendCharacter(uart_configType *config, char data)
 
     uart = uartRegisters[config->number];
 
+      /* Convert LF to CR+LF */
+    if (data == '\n')
+    {
+        while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))
+        {
+        }
+
+        uart->UARTDR = '\r';
+    }
+
     /* Wait until TX FIFO is not full */
     while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))    
     {
@@ -512,6 +522,8 @@ uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
 
     /* Read received character */
     *data = (char)(uart->UARTDR & 0xFFU);
+
+    
 
     return UART_SUCCESS;
 }
