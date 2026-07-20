@@ -98,8 +98,13 @@
 #define UARTCTL_RXE_BIT                (9U)
 
 /* UARTLCRH Register */
+#define UARTLCRH_BRK_BIT               (0U)
+#define UARTLCRH_PEN_BIT               (1U)
+#define UARTLCRH_EPS_BIT               (2U)
+#define UARTLCRH_STP2_BIT              (3U)
 #define UARTLCRH_FEN_BIT               (4U)
 #define UARTLCRH_WLEN_BIT              (5U)
+#define UARTLCRH_SPS_BIT               (7U)
 
 /* UART Interrupts */
 #define UARTIM_RXIM_BIT                (4U)
@@ -107,11 +112,11 @@
 #define UARTICR_RXIC_BIT               (4U)
 
 
-#define UART_WORD_LENGTH_8             (0x3U)
+#define UART_DATA_LENGTH_8             (0x3U)
 #define UART_FIFO_ENABLE               (1U)
 
 #define GPIO_PCTL_PIN_OFFSET           (4U)
-#define GPIO_PCTL_UART          (0x1U)
+#define GPIO_PCTL_UART                 (0x1U)
 
 
 #define IRQ_REGISTER_DIVISION_FACTOR   (32U)
@@ -159,11 +164,36 @@ typedef enum
 
 typedef enum
 {
-    UART_BAUD_RATE_9600 = 9600,
-    UART_BAUD_RATE_19200 = 19200,
-    UART_BAUD_RATE_38400 = 38400,   
-    UART_BUAD_RAE_115200 = 115200,
-    UART_BAUD_RATE_INVALID
+    UART_WORD_LENGTH_5 = 0,
+    UART_WORD_LENGTH_6,
+    UART_WORD_LENGTH_7,
+    UART_WORD_LENGTH_8
+
+} uart_wordLengthType;
+
+typedef enum
+{
+    UART_PARITY_NONE,
+    UART_PARITY_EVEN,
+    UART_PARITY_ODD
+
+} uart_parityType;
+
+typedef enum
+{
+    UART_STOP_BITS_1,
+    UART_STOP_BITS_2
+
+} uart_stopBitsType;
+
+typedef enum
+{
+    UART_BUAD_RATE_9600 = 9600,
+    UART_BUAD_RATE_19200 = 19200,
+    UART_BUAD_RATE_38400 = 38400,   
+    UART_BUAD_RATE_115200 = 115200,
+    UART_BAUD_RATE_1000000 = 1000000,
+    UART_BUAD_RATE_INVALID
 } uart_baudRateType;
 
 typedef enum
@@ -180,17 +210,21 @@ typedef enum
 } uart_irqNumberType;
 
 
+
+
 /******************************************* Data Types *******************************************/
 
 typedef struct
 {
     uart_numberType number;
-
-    uint32_t baudRate;
-
+    uart_baudRateType baudRate;
+    uart_wordLengthType wordLength;
+    uart_parityType parity;
+    uart_stopBitsType stopBits;
     uint8_t interruptEnable;
 
 } uart_configType;
+
 typedef struct
 {
     /* 0x000 : Data */
@@ -265,13 +299,14 @@ typedef struct
 } uart_registerType;
 
 /*************************************** Function Prototypes **************************************/
-uart_errorType uart_init(uart_configType *config);
-uart_errorType uart_deInit(uart_configType *config);
-uart_errorType uart_sendCharacter(uart_configType *config, char data);
-uart_errorType uart_sendString(uart_configType *config, char* data);
-uart_errorType uart_receiveCharacter(uart_configType *config, char* data);
-uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data );
-uart_errorType uart_interruptHandler(uart_numberType uartNumber);
-uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(void));
+uart_errorType uart_init(uart_configType* config);
+uart_errorType uart_deInit(uart_configType* config);
+uart_errorType uart_sendCharacter(uart_configType* config, char data);
+uart_errorType uart_sendString(uart_configType* config, char* data);
+uart_errorType uart_receiveCharacter(uart_configType* config, char* data);
+uart_errorType uart_receiveNB(uart_configType* config, char* data);
+uart_errorType uart_getReceivedCharacter(uart_configType* config ,char* data);
+uart_errorType uart_interruptHandler(uart_configType* config);
+uart_errorType uart_setCallback(uart_configType* config, void (*callback)(void));
 
 #endif

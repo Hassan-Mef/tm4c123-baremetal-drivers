@@ -156,7 +156,10 @@ static void clock_init80MHz(void)
 }
 
 /**
- * @brief  uart_init : Initializes the UART peripheral.
+ * @brief uart_setBaudRate : Configures the UART baud rate.
+ *
+ * Calculates and programs the integer and fractional baud-rate
+ * divisors for the selected UART peripheral.
  *
  * @param uart : Pointer to UART register structure.
  * @param baudRate : Desired baud rate.
@@ -271,11 +274,14 @@ static uart_errorType uart_configurePins(uart_numberType uartNumber)
 /**
  * @brief uart_init : Initializes the selected UART peripheral.
  *
+ * Configures the UART baud rate, frame format, GPIO pins,
+ * clock source, and optionally enables receive interrupts.
+ *
  * @param config : Pointer to UART configuration.
  *
  * @return uart_errorType
  */
-uart_errorType uart_init(uart_configType *config)
+uart_errorType uart_init(uart_configType* config)
 {
     /* Configure system clock only once */
     if (clockInitialized == 0U)
@@ -326,10 +332,38 @@ uart_errorType uart_init(uart_configType *config)
      *  - 8 data bits
      *  - No parity
      *  - One stop bit
-     *  - FIFO enabled
      */
     uart->UARTLCRH =
-        (UART_WORD_LENGTH_8 << UARTLCRH_WLEN_BIT) ;
+    (config->wordLength << UARTLCRH_WLEN_BIT);
+
+    switch (config->parity)
+    {
+    case UART_PARITY_NONE:
+        uart->UARTLCRH &= ~(1U << UARTLCRH_PEN_BIT);
+        break;
+
+    case UART_PARITY_EVEN:
+        uart->UARTLCRH |= (1U << UARTLCRH_PEN_BIT);
+        uart->UARTLCRH |= (1U << UARTLCRH_EPS_BIT);
+        break;
+
+    case UART_PARITY_ODD:
+        uart->UARTLCRH |= (1U << UARTLCRH_PEN_BIT);
+        uart->UARTLCRH &= ~(1U << UARTLCRH_EPS_BIT);
+        break;
+    default:
+        return  UART_INVALID_CONFIG;
+    }
+
+
+    if (config->stopBits == UART_STOP_BITS_2)
+    {
+        uart->UARTLCRH |= (1U << UARTLCRH_STP2_BIT);
+    }
+    else
+    {
+        uart->UARTLCRH &= ~(1U << UARTLCRH_STP2_BIT);
+    }
 
     /* Select System Clock as UART clock source */
     uart->UARTCC = 0U;
@@ -365,7 +399,7 @@ uart_errorType uart_init(uart_configType *config)
  *
  * @return uart_errorType
  */
-uart_errorType uart_deInit(uart_configType *config)
+uart_errorType uart_deInit(uart_configType* config)
 {
     uart_registerType *uart = NULL;
     uint32_t irqNumber;
@@ -420,7 +454,7 @@ uart_errorType uart_deInit(uart_configType *config)
  *
  * @return uart_errorType
  */
-uart_errorType uart_sendCharacter(uart_configType *config, char data)
+uart_errorType uart_sendCharacter(uart_configType* config, char data)
 {
     uart_registerType *uart = NULL;
 
@@ -465,7 +499,7 @@ uart_errorType uart_sendCharacter(uart_configType *config, char data)
  *
  * @return uart_errorType
  */
-uart_errorType uart_sendString(uart_configType *config, char *data)
+uart_errorType uart_sendString(uart_configType* config, char* data)
 {
     if (config == NULL)
     {
@@ -487,14 +521,17 @@ uart_errorType uart_sendString(uart_configType *config, char *data)
 }
 
 /**
- * @brief uart_sendString : Sends a NULL terminated string.
+ * @brief uart_receiveCharacter : Receives a character.
+ *
+ * Waits until a character is available in the receive buffer,
+ * then reads and returns it.
  *
  * @param config : Pointer to UART configuration.
- * @param data   : String to transmit.
+ * @param data : Pointer to store the received character.
  *
  * @return uart_errorType
  */
-uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
+uart_errorType uart_receiveCharacter(uart_configType* config, char* data)
 {
     uart_registerType *uart = NULL;
 
@@ -529,17 +566,62 @@ uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
 }
 
 /**
- * @brief uart_getReceivedCharacter : Retrieves the last received UART character.
- * Returns the character stored by the UART interrupt handler for
- * the selected UART peripheral.
+ * @brief uart_receiveNB : Receives a character without blocking.
  *
- * @param uartNumber : UART peripheral number.
+ * Checks whether a character is available in the receive buffer.
+ * If data is available, the received character is returned
+ * immediately. Otherwise, the function returns UART_BUSY.
+ *
+ * @param config : Pointer to UART configuration.
  * @param data : Pointer to store the received character.
  *
  * @return uart_errorType
  */
-uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data )
+uart_errorType uart_receiveNB(uart_configType* config, char* data)
 {
+    uart_registerType *uart = NULL;
+
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (data == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    if (config->number >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    uart = uartRegisters[config->number];
+
+    /* No data available */
+    if (uart->UARTFR & (1U << UARTFR_RXFE_BIT))
+    {
+        return UART_BUSY;
+    }
+
+    *data = (char)(uart->UARTDR & 0xFFU);
+
+    return UART_SUCCESS;
+}
+
+/**
+ * @brief uart_getReceivedCharacter : Retrieves the last received UART character.
+ * Returns the character stored by the UART interrupt handler for
+ * the selected UART peripheral.
+ *
+ * @param config : Pointer to UART configuration.  
+ * @param data : Pointer to store the received character.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_getReceivedCharacter(uart_configType* config, char* data)
+{
+    uint8_t uartNumber = config->number ;
     if (uartNumber >= UART_INVALID)
     {
         return UART_INVALID_UART;
@@ -559,16 +641,16 @@ uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data )
 /**
  * @brief uart_interruptHandler : Handles UART receive interrupts.
  * Reads the received character, clears the receive interrupt flag,
- * stores the received data, and executes the registered callback
- * function for the selected UART.
+ * stores the received data
  *
- * @param uartNumber : UART peripheral number.
+ * @param config : Pointer to UART configuration.
  *
  * @return uart_errorType
  */
-uart_errorType uart_interruptHandler(uart_numberType uartNumber)
+uart_errorType uart_interruptHandler(uart_configType* config)
 {
     uart_registerType *uart = NULL;
+    uint8_t uartNumber = config->number ;
 
     if (uartNumber >= UART_INVALID)
     {
@@ -600,13 +682,15 @@ uart_errorType uart_interruptHandler(uart_numberType uartNumber)
  * UART peripheral. The callback is executed whenever a receive
  * interrupt occurs.
  *
- * @param uartNumber : UART peripheral number.
+ * @param config : Pointer to UART configuration.
  * @param callback : Pointer to callback function.
  *
  * @return uart_errorType
  */
-uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(void))
+uart_errorType uart_setCallback(uart_configType* config, void (*callback)(void))
 {
+    uint8_t uartNumber = config->number ;
+
     if (uartNumber >= UART_INVALID)
     {
         return UART_INVALID_UART;
@@ -639,7 +723,7 @@ static void uart_rxEchoCallback(void)
 
     config.number = currentInterruptUART;
 
-    if (uart_getReceivedCharacter(currentInterruptUART, &ch) == UART_SUCCESS)
+    if (uart_getReceivedCharacter(&config, &ch) == UART_SUCCESS)
     {
         uart_sendCharacter(&config, ch);
     }

@@ -14,14 +14,20 @@
 uart_configType uart0 =
 {
     .number = UART_0,
-    .baudRate = UART_BUAD_RAE_115200,
+    .baudRate = UART_BAUD_RATE_1000000,
+    .wordLength = UART_WORD_LENGTH_8,
+    .parity = UART_PARITY_NONE,
+    .stopBits = UART_STOP_BITS_1,
     .interruptEnable = 0
 };
 
 uart_configType uart1 =
 {
     .number = UART_1,
-    .baudRate = UART_BUAD_RAE_115200,
+    .baudRate = UART_BAUD_RATE_1000000 ,
+    .wordLength = UART_WORD_LENGTH_8,
+    .parity = UART_PARITY_NONE,
+    .stopBits = UART_STOP_BITS_1,
     .interruptEnable = 1
 };
 
@@ -164,6 +170,53 @@ void uart1ToUart0Test(void)
     }
 }
 
+
+void uartBridgeTest(void)
+{
+    char ch;
+
+    uart0.interruptEnable = 0;
+    uart1.interruptEnable = 0;
+
+    uart_init(&uart0);
+    uart_init(&uart1);
+
+    uart_sendString(&uart0, "\r\n====================================\r\n");
+    uart_sendString(&uart0, "UART0 <-> UART1 BRIDGE TEST\r\n");
+    uart_sendString(&uart0, "====================================\r\n");
+    uart_sendString(&uart0, "Type on either terminal.\r\n");
+    uart_sendString(&uart0, "Characters will be forwarded to the other UART.\r\n");
+
+    while (1)
+    {
+        /* UART0 -> UART1 */
+        if (uart_receiveNB(&uart0, &ch) == UART_SUCCESS)
+        {
+            if ((ch == '\r') || (ch == '\n'))
+            {
+                uart_sendString(&uart1, "\r\n");
+            }
+            else
+            {
+                uart_sendCharacter(&uart1, ch);
+            }
+        }
+
+        /* UART1 -> UART0 */
+        if (uart_receiveNB(&uart1, &ch) == UART_SUCCESS)
+        {
+            if ((ch == '\r') || (ch == '\n'))
+            {
+                uart_sendString(&uart0, "\r\n");
+            }
+            else
+            {
+                uart_sendCharacter(&uart0, ch);
+            }
+        }
+    }
+}
+
 /************************************** Main Implementation ***************************************/
 
 int main(void)
@@ -178,7 +231,9 @@ int main(void)
 
     //uart0ToUart1Test();
 
-    uart1ToUart0Test();
+    // uart1ToUart0Test();
+
+    uartBridgeTest();
     while (1)
     {
     }
