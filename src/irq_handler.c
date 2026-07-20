@@ -10,6 +10,7 @@
 /*************************************** Header Inclusion******************************************/
 #include "irq_handler.h"
 #include "timer.h"
+#include "uart.h"
 
 /********************************************* Globals ********************************************/
 
@@ -75,3 +76,44 @@ void TIM5B_IRQHandler(void)
 {
     timer_interruptHandler(TIMER_5, TIMER_B);
 }
+
+void UART0_IRQHandler(void)
+{
+    uart_interruptHandler(UART_0);
+}
+
+void UART1_IRQHandler(void)
+{
+    uart_interruptHandler(UART_1);
+}
+
+void UART2_IRQHandler(void)
+{
+    uart_interruptHandler(UART_2);
+}
+
+void UART3_IRQHandler(void)
+{
+    uart_interruptHandler(UART_3);
+}
+
+void UART4_IRQHandler(void)
+{
+    uart_interruptHandler(UART_4);
+}
+
+void UART5_IRQHandler(void)
+{
+    uart_interruptHandler(UART_5);
+}
+
+void UART6_IRQHandler(void)
+{
+    uart_interruptHandler(UART_6);
+}
+
+void UART7_IRQHandler(void)
+{
+    uart_interruptHandler(UART_7);
+}
+

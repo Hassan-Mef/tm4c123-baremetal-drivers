@@ -1,151 +1,173 @@
 /***************************************************************************************************
  * FILENAME    : main.c
- * DESCRIPTION : GPIO Driver Test
+ * DESCRIPTION : UART Driver Validation
  *
  * AUTHOR      : Hassan
- *
  ***************************************************************************************************/
 
-/*************************************** Header Inclusion *****************************************/
+ /*************************************** Header Inclusion *****************************************/
 
-#include "gpio.h"
-#include "timer.h"
 #include "uart.h"
+#include "gpio.h"
 
-/************************************* Private Functions ******************************************/
+/**************************************** UART Configuration ****************************************/
+uart_configType uart0 =
+{
+    .number = UART_0,
+    .baudRate = UART_BUAD_RAE_115200,
+    .interruptEnable = 0
+};
 
-gpio_configType redLed =
-    {
-        .port = GPIO_PORT_F,
-        .pin = GPIO_PIN_1,
-        .mode = GPIO_MODE_OUTPUT};
+uart_configType uart1 =
+{
+    .number = UART_1,
+    .baudRate = UART_BUAD_RAE_115200,
+    .interruptEnable = 1
+};
+
 
 gpio_configType blueLed =
-    {
-        .port = GPIO_PORT_F,
-        .pin = GPIO_PIN_2,
-        .mode = GPIO_MODE_OUTPUT};
-
-gpio_configType greenLed =
-    {
-        .port = GPIO_PORT_F,
-        .pin = GPIO_PIN_3,
-        .mode = GPIO_MODE_OUTPUT};
-
-gpio_configType button =
-    {
-        .port = GPIO_PORT_F,
-        .pin = GPIO_PIN_4,
-        .mode = GPIO_MODE_INPUT};
-
-static void redCallback(void)
 {
-    gpio_digitalToggle(&redLed);
+    .port = GPIO_PORT_F,
+    .pin  = GPIO_PIN_2,
+    .mode = GPIO_MODE_OUTPUT
+};
+
+/************************************** Callback ****************************************************/
+
+void upperCaseCallback(void)
+{
+    char ch;
+
+    if (uart_getReceivedCharacter(UART_0, &ch) == UART_SUCCESS)
+    {
+        if ((ch >= 'a') && (ch <= 'z'))
+        {
+            ch -= ('a' - 'A');
+        }
+
+        uart_sendCharacter(&uart0, ch);
+    }
 }
 
-static void blueCallback(void)
+void uart1Callback(void )
 {
     gpio_digitalToggle(&blueLed);
 }
 
-static void greenCallback(void)
+/************************************* Private Functions ******************************************/
+
+
+void blockingEchoTest(void)
 {
-    gpio_digitalToggle(&greenLed);
-}
-/************************************** Main Implementation ***************************************/
-
-int main(void)
-{
-    // /* Initialize GPIO pins for LEDs */
-    // gpio_init(&redLed);
-    // gpio_init(&blueLed);
-    // gpio_init(&greenLed);
-    // gpio_init(&button);
-
-    // /* Set up timer configuration */
-
-    // timer_configType timer0 =
-    // {
-    //     .number     = TIMER_0,
-    //     .channel    = TIMER_AB,
-    //     .mode       = TIMER_MODE_PERIODIC,
-    //     .direction  = TIMER_COUNT_DOWN,
-    //     .size       = TIMER_SIZE_32_BIT,
-    //     .prescaler  = 0U,
-    //     .unit       = TIMER_MS,
-    //     .interrupt  = TIMER_INTERRUPT_ENABLE
-    // };
-
-    // timer_configType timer1 =
-    // {
-    //     .number     = TIMER_1,
-    //     .channel    = TIMER_AB,
-    //     .mode       = TIMER_MODE_PERIODIC,
-    //     .direction  = TIMER_COUNT_DOWN,
-    //     .size       = TIMER_SIZE_32_BIT,
-    //     .prescaler  = 0U,
-    //     .unit       = TIMER_MS,
-    //     .interrupt  = TIMER_INTERRUPT_ENABLE
-    // };
-
-    // timer_configType timer3 =
-    // {
-    //     .number     = TIMER_3,
-    //     .channel    = TIMER_AB,
-    //     .mode       = TIMER_MODE_ONE_SHOT,
-    //     .direction  = TIMER_COUNT_DOWN,
-    //     .size       = TIMER_SIZE_32_BIT,
-    //     .prescaler  = 0U,
-    //     .unit       = TIMER_MS,
-    //     .interrupt  = TIMER_INTERRUPT_ENABLE
-    // };
-    // timer_configType timer4 =
-    // {
-    //     .number     = TIMER_4,
-    //     .channel    = TIMER_AB,
-    //     .mode       = TIMER_MODE_ONE_SHOT,
-    //     .direction  = TIMER_COUNT_DOWN,
-    //     .size       = TIMER_SIZE_32_BIT,
-    //     .prescaler  = 0U,
-    //     .unit       = TIMER_MS,
-    //     .interrupt  = TIMER_INTERRUPT_DISABLE
-    // };
-
-    // /* Initialize timers and set callbacks */
-    // timer_init(&timer0);
-    // timer_init(&timer1);
-    // timer_init(&timer3);
-    // timer_init(&timer4);
-
-    // timer_setCallback(TIMER_0, redCallback);
-    // timer_setCallback(TIMER_1, blueCallback);
-    // timer_setCallback(TIMER_3, greenCallback);
-
-    // timer_start(&timer0, 1000U);
-
-    // uint8_t blockingDemoDone = 0U;
-    // uint8_t oneShotDemoDone  = 0U;
-    // uint8_t buttonState;
-    // uint8_t previousState = 1U;
-
-    uart_configType uart0 =
-        {
-            .number = UART_0,
-            .baudRate = 115200,
-            .interruptEnable = 0};
-
-    uart_init(&uart0);
-
-    uart_sendString(&uart0, "Hello !\r\n");
-
     char ch;
+    
+    uart0.interruptEnable = 0;
+    
+    uart_init(&uart0);
+    
+    uart_sendString(&uart0, "\r\n====================================\r\n");
+    uart_sendString(&uart0, "UART BLOCKING ECHO TEST\r\n");
+    uart_sendString(&uart0, "====================================\r\n");
+    uart_sendString(&uart0, "Type any character...\r\n");
 
     while (1)
     {
         uart_receiveCharacter(&uart0, &ch);
+        uart_sendCharacter(&uart0, ch);
+    }
+}
 
-        // ch = (ch >= 'a' && ch <= 'z') ? (ch - 32) : ch; // Convert to uppercase if lowercase
-        // uart_sendCharacter(&uart0, ch);
-        uart_sendCharacter(&uart0, 'A');
+void interruptEchoTest(void)
+{
+    uart0.interruptEnable = 1;
+    
+    uart_init(&uart0);
+    
+    uart_sendString(&uart0, "\r\n====================================\r\n");
+    uart_sendString(&uart0, "UART INTERRUPT ECHO TEST\r\n");
+    uart_sendString(&uart0, "====================================\r\n");
+    uart_sendString(&uart0, "Default callback will echo characters.\r\n");
+    
+    while (1)
+    {
+    }
+}
+
+void callbackOverrideTest(void)
+{
+    uart0.interruptEnable = 1;
+    
+    uart_init(&uart0);
+    
+    uart_setCallback(UART_0, upperCaseCallback);
+    
+    uart_sendString(&uart0, "\r\n====================================\r\n");
+    uart_sendString(&uart0, "UART CALLBACK OVERRIDE TEST\r\n");
+    uart_sendString(&uart0, "====================================\r\n");
+    uart_sendString(&uart0, "Lowercase letters become uppercase.\r\n");
+    
+    while (1)
+    {
+    }
+}
+
+void uart0ToUart1Test(void)
+{
+    char ch;
+
+    uart0.interruptEnable = 0;
+    uart1.interruptEnable = 0;
+
+    uart_init(&uart0);
+    uart_init(&uart1);
+
+    uart_sendString(&uart0, "\r\nUART0 -> UART1 Test\r\n");
+    uart_sendString(&uart0, "Type here. Characters will appear on UART1.\r\n");
+
+    while (1)
+    {
+        uart_receiveCharacter(&uart0, &ch);
+        uart_sendCharacter(&uart1, ch);
+    }
+}
+
+void uart1ToUart0Test(void)
+{
+    char ch;
+
+    uart0.interruptEnable = 0;
+    uart1.interruptEnable = 0;
+
+    uart_init(&uart0);
+    uart_init(&uart1);
+
+    uart_sendString(&uart0, "\r\nUART1 -> UART0 Test\r\n");
+    uart_sendString(&uart0, "Type on the USB-TTL terminal.\r\n");
+
+    while (1)
+    {
+        uart_receiveCharacter(&uart1, &ch);
+        uart_sendCharacter(&uart0, ch);
+    }
+}
+
+/************************************** Main Implementation ***************************************/
+
+int main(void)
+{
+    
+
+    //blockingEchoTest();
+
+    // interruptEchoTest();
+
+    // callbackOverrideTest();
+
+    //uart0ToUart1Test();
+
+    uart1ToUart0Test();
+    while (1)
+    {
     }
 }

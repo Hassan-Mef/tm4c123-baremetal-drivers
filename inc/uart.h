@@ -114,6 +114,9 @@
 #define GPIO_PCTL_UART          (0x1U)
 
 
+#define IRQ_REGISTER_DIVISION_FACTOR   (32U)
+
+
 
 #define NVIC_BASE                      0xE000E000U  
 #define NVIC_EN0                       (*(volatile uint32_t *)(NVIC_BASE + 0x100U))
@@ -162,6 +165,19 @@ typedef enum
     UART_BUAD_RAE_115200 = 115200,
     UART_BAUD_RATE_INVALID
 } uart_baudRateType;
+
+typedef enum
+{
+    UART0_IRQ = 5,
+    UART1_IRQ = 6,
+    UART2_IRQ = 33,
+    UART3_IRQ = 59,
+    UART4_IRQ = 60,
+    UART5_IRQ = 61,
+    UART6_IRQ = 62,
+    UART7_IRQ = 63
+
+} uart_irqNumberType;
 
 
 /******************************************* Data Types *******************************************/
@@ -250,9 +266,12 @@ typedef struct
 
 /*************************************** Function Prototypes **************************************/
 uart_errorType uart_init(uart_configType *config);
+uart_errorType uart_deInit(uart_configType *config);
 uart_errorType uart_sendCharacter(uart_configType *config, char data);
-uart_errorType uart_sendString(uart_configType *config, char *data);
-uart_errorType uart_receiveCharacter(uart_configType *config, char *data);
-
+uart_errorType uart_sendString(uart_configType *config, char* data);
+uart_errorType uart_receiveCharacter(uart_configType *config, char* data);
+uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data );
+uart_errorType uart_interruptHandler(uart_numberType uartNumber);
+uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(void));
 
 #endif

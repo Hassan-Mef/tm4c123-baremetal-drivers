@@ -1,11 +1,11 @@
 /**************************************************************************************************
-* FILENAME : uart.c
-* DESCRIPTION : Contains UART driver function definitions.
-*
-* NOTES :
-*
-* AUTHOR : Hassan
-***************************************************************************************************/
+ * FILENAME : uart.c
+ * DESCRIPTION : Contains UART driver function definitions.
+ *
+ * NOTES :
+ *
+ * AUTHOR : Hassan
+ ***************************************************************************************************/
 
 /*************************************** Header Inclusion*****************************************/
 #include "uart.h"
@@ -13,7 +13,7 @@
 
 /********************************************* Globals ********************************************/
 
-static uart_registerType * const uartRegisters[] =
+static uart_registerType *const uartRegisters[] =
 {
     UART0,
     UART1,
@@ -37,7 +37,6 @@ static const uint32_t uartClockMask[] =
     (1U << 7)
 };
 
-
 typedef struct
 {
     gpio_portType port;
@@ -46,37 +45,67 @@ typedef struct
 
 } uart_pinConfigType;
 
-
 static const uart_pinConfigType uartPins[] =
 {
-    /* UART0 */ 
+    /* UART0 */
     {GPIO_PORT_A, GPIO_PIN_1, GPIO_PIN_0},
-    
-    /* UART1 */ 
+
+    /* UART1 */
     {GPIO_PORT_B, GPIO_PIN_1, GPIO_PIN_0},
 
-    /* UART2 */ 
+     /* UART2 */
     {GPIO_PORT_D, GPIO_PIN_7, GPIO_PIN_6},
 
-    /* UART3 */ 
+    /* UART3 */
     {GPIO_PORT_C, GPIO_PIN_7, GPIO_PIN_6},
 
-    /* UART4 */ 
+    /* UART4 */
     {GPIO_PORT_C, GPIO_PIN_5, GPIO_PIN_4},
 
-    /* UART5 */ 
+    /* UART5 */
     {GPIO_PORT_E, GPIO_PIN_5, GPIO_PIN_4},
 
-    /* UART6 */ 
+    /* UART6 */
     {GPIO_PORT_D, GPIO_PIN_5, GPIO_PIN_4},
 
-    /* UART7 */ 
+    /* UART7 */
     {GPIO_PORT_E, GPIO_PIN_1, GPIO_PIN_0}
 };
 
+/* IRQ Lookup Table */
+static const uart_irqNumberType uartIRQTable[] =
+{
+    UART0_IRQ,
+    UART1_IRQ,
+    UART2_IRQ,
+    UART3_IRQ,
+    UART4_IRQ,
+    UART5_IRQ,
+    UART6_IRQ,
+    UART7_IRQ
+};
+
+/* Last received character for each UART */
+static volatile char uartReceivedData[UART_INVALID];
+
+static void uart_rxEchoCallback(void);
+/* UART RX callback table */
+static void (*uartCallbacks[UART_INVALID])(void) = 
+{
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+    uart_rxEchoCallback, 
+};
+
+static uart_numberType currentInterruptUART = UART_INVALID;
+
+/* Clock initialization flag */ 
 static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations***********************************/
-
 
 /**
  * @brief clock_init80MHz : Configures the system clock to 80 MHz.
@@ -88,7 +117,7 @@ static void clock_init80MHz(void)
 {
     /* Use RCC2 register for advanced clock configuration */
     SYSCTL_RCC2 |= RCC2_USERCC2;
-    SYSCTL_RCC  |= RCC_USESYSDIV;
+    SYSCTL_RCC |= RCC_USESYSDIV;
 
     /* Bypass PLL while configuring the clock */
     SYSCTL_RCC2 |= RCC2_BYPASS2;
@@ -145,7 +174,8 @@ static void uart_setBaudRate(uart_registerType *uart, uint32_t baudRate)
     integer = SYSTEM_CLOCK_HZ / divisor;
 
     fractional = ((SYSTEM_CLOCK_HZ % divisor) * 64U +
-                  (divisor / 2U)) / divisor;
+                  (divisor / 2U)) /
+                 divisor;
 
     uart->UARTIBRD = integer;
     uart->UARTFBRD = fractional;
@@ -193,32 +223,32 @@ static uart_errorType uart_configurePins(uart_numberType uartNumber)
     /* Get GPIO register pointer */
     switch (pins->port)
     {
-        case GPIO_PORT_A:
-            gpio = GPIOA;
-            break;
+    case GPIO_PORT_A:
+        gpio = GPIOA;
+        break;
 
-        case GPIO_PORT_B:
-            gpio = GPIOB;
-            break;
+    case GPIO_PORT_B:
+        gpio = GPIOB;
+        break;
 
-        case GPIO_PORT_C:
-            gpio = GPIOC;
-            break;
+    case GPIO_PORT_C:
+        gpio = GPIOC;
+        break;
 
-        case GPIO_PORT_D:
-            gpio = GPIOD;
-            break;
+    case GPIO_PORT_D:
+        gpio = GPIOD;
+        break;
 
-        case GPIO_PORT_E:
-            gpio = GPIOE;
-            break;
+    case GPIO_PORT_E:
+        gpio = GPIOE;
+        break;
 
-        case GPIO_PORT_F:
-            gpio = GPIOF;
-            break;
+    case GPIO_PORT_F:
+        gpio = GPIOF;
+        break;
 
-        default:
-            return UART_INVALID_CONFIG;
+    default:
+        return UART_INVALID_CONFIG;
     }
 
     /* Disable analog function */
@@ -229,11 +259,11 @@ static uart_errorType uart_configurePins(uart_numberType uartNumber)
 
     /* RX */
     gpio->PCTL &= ~(0xFU << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
-    gpio->PCTL |=  (GPIO_PCTL_UART << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
+    gpio->PCTL |= (GPIO_PCTL_UART << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
 
     /* TX */
     gpio->PCTL &= ~(0xFU << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
-    gpio->PCTL |=  (GPIO_PCTL_UART << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
+    gpio->PCTL |= (GPIO_PCTL_UART << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
 
     return UART_SUCCESS;
 }
@@ -247,7 +277,7 @@ static uart_errorType uart_configurePins(uart_numberType uartNumber)
  */
 uart_errorType uart_init(uart_configType *config)
 {
-      /* Configure system clock only once */
+    /* Configure system clock only once */
     if (clockInitialized == 0U)
     {
         clock_init80MHz();
@@ -255,7 +285,6 @@ uart_errorType uart_init(uart_configType *config)
     }
 
     uart_registerType *uart = NULL;
-    volatile uint32_t delay;
 
     /* Validate input pointer */
     if (config == NULL)
@@ -277,10 +306,6 @@ uart_errorType uart_init(uart_configType *config)
 
     /* Enable UART module clock */
     SYSCTL_RCGCUART |= uartClockMask[config->number];
-
-    /* Wait for UART clock to stabilize */
-    delay = SYSCTL_RCGCUART;
-    (void)delay;
 
     /* Configure UART GPIO pins */
     if (uart_configurePins(config->number) != UART_SUCCESS)
@@ -304,8 +329,7 @@ uart_errorType uart_init(uart_configType *config)
      *  - FIFO enabled
      */
     uart->UARTLCRH =
-        (UART_WORD_LENGTH_8 << UARTLCRH_WLEN_BIT) |
-        (UART_FIFO_ENABLE << UARTLCRH_FEN_BIT);
+        (UART_WORD_LENGTH_8 << UARTLCRH_WLEN_BIT) ;
 
     /* Select System Clock as UART clock source */
     uart->UARTCC = 0U;
@@ -315,11 +339,71 @@ uart_errorType uart_init(uart_configType *config)
         (1U << UARTCTL_TXE_BIT) |
         (1U << UARTCTL_RXE_BIT);
 
+    /* Enable UART interrupt if requested */
+    if (config->interruptEnable)
+    {
+        /* Enable RX interrupt in UARTIM register */
+        uart->UARTIM |= (1U << UARTIM_RXIM_BIT);
+
+        /* Enable UART interrupt in NVIC */
+        uint32_t irqNumber = uartIRQTable[config->number];
+        NVIC_ENABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] |= (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
+    }
+
     /* Enable UART */
     uart->UARTCTL |= (1U << UARTCTL_UARTEN_BIT);
 
     return UART_SUCCESS;
 }
+
+
+uart_errorType uart_deInit(uart_configType *config)
+{
+    uart_registerType *uart = NULL;
+    uint32_t irqNumber;
+
+    /* Validate pointer */
+    if (config == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    /* Validate UART number */
+    if (config->number >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    uart = uartRegisters[config->number];
+
+    /* Disable UART interrupts */
+    uart->UARTIM = 0U;
+
+    /* Clear pending UART interrupts */
+    uart->UARTICR = 0xFFFFFFFFU;
+
+    /* Disable NVIC interrupt */
+    irqNumber = uartIRQTable[config->number];
+
+    /* NVIC ICER registers start at 0xE000E180 */
+    volatile uint32_t *NVIC_DISABLE_BASE =
+        (volatile uint32_t *)0xE000E180U;
+
+    NVIC_DISABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] =
+        (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
+
+    /* Disable transmitter */
+    uart->UARTCTL &= ~(1U << UARTCTL_TXE_BIT);
+
+    /* Disable receiver */
+    uart->UARTCTL &= ~(1U << UARTCTL_RXE_BIT);
+
+    /* Disable UART module */
+    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
+
+    return UART_SUCCESS;
+}
+
 /**
  * @brief uart_sendCharacter : Sends a single character over UART.
  *
@@ -345,7 +429,7 @@ uart_errorType uart_sendCharacter(uart_configType *config, char data)
     uart = uartRegisters[config->number];
 
     /* Wait until TX FIFO is not full */
-    while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))
+    while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))    
     {
     }
 
@@ -422,4 +506,81 @@ uart_errorType uart_receiveCharacter(uart_configType *config, char *data)
     *data = (char)(uart->UARTDR & 0xFFU);
 
     return UART_SUCCESS;
+}
+
+uart_errorType uart_getReceivedCharacter(uart_numberType uartNumber,char *data )
+{
+    if (uartNumber >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    if (data == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    *data = uartReceivedData[uartNumber];
+
+    return UART_SUCCESS;
+    
+}
+
+uart_errorType uart_interruptHandler(uart_numberType uartNumber)
+{
+    uart_registerType *uart = NULL;
+
+    if (uartNumber >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    currentInterruptUART = uartNumber;
+    
+    uart = uartRegisters[uartNumber];
+
+    /* Read received character */
+    uartReceivedData[uartNumber] = (char)(uart->UARTDR & 0xFFU);
+
+
+    uart->UARTICR = (1U << UARTICR_RXIC_BIT);
+
+    if(uartCallbacks[uartNumber] != NULL)
+    {
+        uartCallbacks[uartNumber]();
+    }
+
+    return UART_SUCCESS;
+}
+
+uart_errorType uart_setCallback(uart_numberType uartNumber, void (*callback)(void))
+{
+    if (uartNumber >= UART_INVALID)
+    {
+        return UART_INVALID_UART;
+    }
+
+    if (callback == NULL)
+    {
+        return UART_NULL_POINTER;
+    }
+
+    /* Register the callback function */
+    uartCallbacks[uartNumber] = callback;
+
+    return UART_SUCCESS;
+    
+}
+
+static void uart_rxEchoCallback(void)
+{
+    char ch;
+    uart_configType config;
+
+    config.number = currentInterruptUART;
+
+    if (uart_getReceivedCharacter(currentInterruptUART, &ch) == UART_SUCCESS)
+    {
+        uart_sendCharacter(&config, ch);
+    }
 }
