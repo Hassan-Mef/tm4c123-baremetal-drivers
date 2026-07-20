@@ -99,6 +99,7 @@ static void (*uartCallbacks[UART_INVALID])(void) =
     uart_rxEchoCallback, 
     uart_rxEchoCallback, 
     uart_rxEchoCallback, 
+    uart_rxEchoCallback,
 };
 
 static uart_numberType currentInterruptUART = UART_INVALID;
