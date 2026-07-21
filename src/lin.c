@@ -23,6 +23,17 @@ static uart_configType uartConfig;
 /********************************************* Externs ********************************************/
 
 /************************************* Static Declarations ****************************************/
+
+/**
+ * @brief lin_generatePid : Generates the Protected Identifier (PID).
+ *
+ * Generates the LIN Protected Identifier by calculating the
+ * parity bits and appending them to the 6-bit identifier.
+ *
+ * @param identifier : LIN frame identifier.
+ *
+ * @return uint8_t : Protected Identifier (PID).
+ */
 static uint8_t lin_generatePid(uint8_t identifier)
 {
     uint8_t p0;
@@ -83,6 +94,19 @@ static uint8_t lin_calculateChecksum(const lin_pduType *pdu)
     return (uint8_t)(~checksum);
 }
 
+/**
+ * @brief lin_sendBreak : Generates the LIN Break field.
+ *
+ * Generates the LIN Break by temporarily reducing the UART baud
+ * rate and transmitting 0x00. Since a UART frame containing 0x00
+ * produces nine dominant bits (start bit + eight data bits), the
+ * temporary baud rate is selected so that the dominant low period
+ * equals thirteen nominal LIN bit times.
+ *
+ * Temporary Baud = (9 × LIN Baud) / 13
+ *
+ * @return void
+ */
 static void lin_sendBreak(void)
 {
 
@@ -101,6 +125,17 @@ static void lin_sendBreak(void)
     uart_changeBaudRate(&uartConfig, linBaudRate);
 }
 /************************************* Function Implementations ***********************************/
+
+/**
+ * @brief lin_init : Initializes the LIN driver.
+ *
+ * Configures UART1 with the specified LIN baud rate and initializes
+ * the internal LIN driver state.
+ *
+ * @param baudRate : LIN communication baud rate.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_init(uint32_t baudRate)
 {
     uart_errorType uartStatus;
@@ -129,6 +164,17 @@ lin_errorType lin_init(uint32_t baudRate)
     return LIN_OK;
 }
 
+/**
+ * @brief lin_sendFrame : Transmits a complete LIN frame.
+ *
+ * Generates the LIN Break field, transmits the Sync byte,
+ * Protected Identifier (PID), data bytes, and checksum
+ * according to the supplied LIN Protocol Data Unit.
+ *
+ * @param pdu : Pointer to the LIN Protocol Data Unit to transmit.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_sendFrame(const lin_pduType *pdu)
 {
     uint8_t pid;
@@ -179,6 +225,16 @@ lin_errorType lin_sendFrame(const lin_pduType *pdu)
     return LIN_OK;
 }
 
+/**
+ * @brief lin_copyReceiveBuffer : Copies the LIN receive buffer.
+ *
+ * Copies the internal LIN receive buffer into the user-provided
+ * buffer.
+ *
+ * @param buffer : Destination buffer.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_copyReceiveBuffer(uint8_t *buffer)
 {
     uint8_t index;
@@ -196,6 +252,13 @@ lin_errorType lin_copyReceiveBuffer(uint8_t *buffer)
     return LIN_OK;
 }
 
+/**
+ * @brief lin_clearReceiveBuffer : Clears the LIN receive buffer.
+ *
+ * Clears all received bytes and resets the receive index.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_clearReceiveBuffer(void)
 {
     uint8_t index;
@@ -210,6 +273,16 @@ lin_errorType lin_clearReceiveBuffer(void)
     return LIN_OK;
 }
 
+/**
+ * @brief lin_copyByte : Stores one received UART byte.
+ *
+ * Reads one byte from the UART receive register and stores it
+ * into the internal LIN receive buffer.
+ *
+ * This function is intended to be called from the UART receive ISR.
+ *
+ * @return void
+ */
 void lin_copyByte(void)
 {
     char receivedByte;
