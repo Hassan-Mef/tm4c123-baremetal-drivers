@@ -258,6 +258,7 @@ typedef struct
 /*************************************** Function Prototypes **************************************/
 uart_errorType uart_init(uart_configType* config);
 uart_errorType uart_deInit(uart_configType* config);
+uart_errorType uart_changeBaudRate(uart_configType *config,uint32_t baudRate);
 uart_errorType uart_sendCharacter(uart_configType* config, char data);
 uart_errorType uart_sendString(uart_configType* config, char* data);
 uart_errorType uart_receiveCharacter(uart_configType* config, char* data);

@@ -392,6 +392,34 @@ uart_errorType uart_deInit(uart_configType* config)
 }
 
 /**
+ * @brief uart_changeBuadRate : Chnages the cureent Baud  
+ *
+ * @param config : Pointer to UART configuration.
+ *
+ * @return uart_errorType
+ */
+uart_errorType uart_changeBaudRate(uart_configType *config,uint32_t baudRate)
+{
+    uart_registerType *uart  = uartRegisters[config->number];
+
+    while (uart->UARTFR & (1U << UARTFR_BUSY_BIT))
+    {
+    }
+
+    /* disable Uart*/
+    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
+
+    uart_setBaudRate(uart, baudRate);
+
+    uart->UARTLCRH = uart->UARTLCRH;
+
+    uart->UARTCTL |= (1U << UARTCTL_UARTEN_BIT);
+
+    return UART_SUCCESS;
+    
+}
+
+/**
  * @brief uart_sendCharacter : Sends a single character over UART.
  *
  * @param config : Pointer to UART configuration.
