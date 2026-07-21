@@ -9,12 +9,13 @@
 
 #include "uart.h"
 #include "gpio.h"
+#include "clock.h"
 
 /**************************************** UART Configuration ****************************************/
 uart_configType uart0 =
 {
     .number = UART_0,
-    .baudRate = UART_BAUD_RATE_1000000,
+    .baudRate = UART_BUAD_RATE_115200,
     .wordLength = UART_WORD_LENGTH_8,
     .parity = UART_PARITY_NONE,
     .stopBits = UART_STOP_BITS_1,
@@ -24,7 +25,7 @@ uart_configType uart0 =
 uart_configType uart1 =
 {
     .number = UART_1,
-    .baudRate = UART_BAUD_RATE_1000000 ,
+    .baudRate = UART_BUAD_RATE_115200 ,
     .wordLength = UART_WORD_LENGTH_8,
     .parity = UART_PARITY_NONE,
     .stopBits = UART_STOP_BITS_1,
@@ -37,6 +38,12 @@ gpio_configType blueLed =
     .port = GPIO_PORT_F,
     .pin  = GPIO_PIN_2,
     .mode = GPIO_MODE_OUTPUT
+};
+
+const clock_configType clockConfig =
+{
+    .source = CLOCK_SOURCE_PLL,
+    .frequency = CLOCK_FREQ_80MHZ
 };
 
 /************************************** Callback ****************************************************/
@@ -222,6 +229,7 @@ void uartBridgeTest(void)
 int main(void)
 {
     
+     clock_init(&clockConfig);
 
     //blockingEchoTest();
 

@@ -104,57 +104,7 @@ static void (*uartCallbacks[UART_INVALID])(void) =
 
 static uart_numberType currentInterruptUART = UART_INVALID;
 
-/* Clock initialization flag */ 
-static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations***********************************/
-
-/**
- * @brief clock_init80MHz : Configures the system clock to 80 MHz.
- *
- * Configures the Main Oscillator (MOSC) and Phase-Locked Loop (PLL)
- * to generate an 80 MHz system clock using the onboard 16 MHz crystal.
- */
-static void clock_init80MHz(void)
-{
-    /* Use RCC2 register for advanced clock configuration */
-    SYSCTL_RCC2 |= RCC2_USERCC2;
-    SYSCTL_RCC |= RCC_USESYSDIV;
-
-    /* Bypass PLL while configuring the clock */
-    SYSCTL_RCC2 |= RCC2_BYPASS2;
-
-    /* Configure the external crystal frequency to 16 MHz */
-    SYSCTL_RCC &= ~RCC_XTAL_MASK;
-    SYSCTL_RCC |= RCC_XTAL_16MHZ;
-
-    /* Select Main Oscillator (MOSC) as PLL clock source */
-    SYSCTL_RCC2 &= ~RCC2_OSCSRC2_MASK;
-    SYSCTL_RCC2 |= RCC2_OSCSRC2_MOSC;
-
-    /* Enable the system clock divider */
-    SYSCTL_RCC |= RCC_USESYSDIV;
-
-    /* Power up the PLL */
-    SYSCTL_RCC2 &= ~RCC2_PWRDN2;
-
-    /* Enable 400 MHz PLL operation */
-    SYSCTL_RCC2 |= RCC2_DIV400;
-
-    /* Configure system clock divider for 80 MHz */
-    SYSCTL_RCC2 &= ~RCC2_SYSDIV2_MASK;
-    SYSCTL_RCC2 |= RCC2_SYSDIV2_80MHZ;
-
-    /* Clear additional divider LSB */
-    SYSCTL_RCC2 &= ~RCC2_SYSDIV2LSB;
-
-    /* Wait until PLL locks */
-    while ((SYSCTL_RIS & RIS_PLLLRIS) == 0U)
-    {
-    }
-
-    /* Switch system clock source to PLL */
-    SYSCTL_RCC2 &= ~RCC2_BYPASS2;
-}
 
 /**
  * @brief uart_setBaudRate : Configures the UART baud rate.
@@ -175,9 +125,9 @@ static void uart_setBaudRate(uart_registerType *uart, uint32_t baudRate)
 
     divisor = 16U * baudRate;
 
-    integer = SYSTEM_CLOCK_HZ / divisor;
+    integer = clock_getSystemFrequency() / divisor;
 
-    fractional = ((SYSTEM_CLOCK_HZ % divisor) * 64U +
+    fractional = ((clock_getSystemFrequency() % divisor) * 64U +
                   (divisor / 2U)) /
                  divisor;
 
@@ -284,12 +234,6 @@ static uart_errorType uart_configurePins(uart_numberType uartNumber)
  */
 uart_errorType uart_init(uart_configType* config)
 {
-    /* Configure system clock only once */
-    if (clockInitialized == 0U)
-    {
-        clock_init80MHz();
-        clockInitialized = 1U;
-    }
 
     uart_registerType *uart = NULL;
 
@@ -648,10 +592,9 @@ uart_errorType uart_getReceivedCharacter(uart_configType* config, char* data)
  *
  * @return uart_errorType
  */
-uart_errorType uart_interruptHandler(uart_configType* config)
+uart_errorType uart_interruptHandler(uart_numberType uartNumber)
 {
     uart_registerType *uart = NULL;
-    uint8_t uartNumber = config->number ;
 
     if (uartNumber >= UART_INVALID)
     {
