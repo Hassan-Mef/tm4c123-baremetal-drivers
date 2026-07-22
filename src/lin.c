@@ -20,8 +20,6 @@ static uint8_t linReceiveIndex = 0U;
 static uint32_t linBaudRate = 0U;
 static uart_configType uartConfig;
 
-/********************************************* Externs ********************************************/
-
 /************************************* Static Declarations ****************************************/
 
 /**
@@ -124,6 +122,26 @@ static void lin_sendBreak(void)
 
     uart_changeBaudRate(&uartConfig, linBaudRate);
 }
+
+
+void lin_testFillBuffer(void)
+{
+    /* Sync */
+    linReceiveBuffer[0] = 0x55U;
+
+    /* PID for Identifier 0x12 */
+    linReceiveBuffer[1] = 0x92U;
+
+    /* Data */
+    linReceiveBuffer[2] = 0xABU;
+    linReceiveBuffer[3] = 0x55U;
+
+    /* Checksum (Classic) */
+    linReceiveBuffer[4] = 0x00U;
+
+    linReceiveIndex = 5U;
+}
+
 /************************************* Function Implementations ***********************************/
 
 /**
@@ -223,6 +241,52 @@ lin_errorType lin_sendFrame(const lin_pduType *pdu)
     }
 
     return LIN_OK;
+}
+
+  
+lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
+{
+    lin_pduType frame;
+
+    if (checksumModel >= LIN_CHECKSUM_INVALID)
+    {
+        return LIN_ERROR_INVALID_CHECKSUM_MODEL;
+    }
+
+    if (linReceiveIndex < 4U)
+    {
+        return LIN_ERROR_FRAME;
+    }
+
+    if (linReceiveIndex > LIN_RX_BUFFER_SIZE)
+    {
+        return LIN_ERROR_BUFFER_OVERFLOW;
+    }
+
+    frame.identifier = linReceiveBuffer[1] & 0x3F;
+    frame.dataLength = (lin_dataLengthType)(linReceiveIndex - 3U);
+    frame.checksumMod = checksumModel;
+
+    for (uint8_t index = 0U; index < frame.dataLength; index++)
+    {
+        frame.data[index] = linReceiveBuffer[index + 2U];
+    }
+
+
+    uint8_t calculatedChecksum;
+    uint8_t receivedChecksum;
+
+    calculatedChecksum = lin_calculateChecksum(&frame);
+
+    receivedChecksum = linReceiveBuffer[linReceiveIndex - 1U];
+
+    if (calculatedChecksum == receivedChecksum)
+    {
+        return LIN_OK;
+    }
+
+    return LIN_ERROR_INVALID_CHECKSUM;
+
 }
 
 /**
