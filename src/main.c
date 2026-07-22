@@ -6,7 +6,7 @@
  ***************************************************************************************************/
 
  /*************************************** Header Inclusion *****************************************/
-#define LIN_TEST
+
 #include "lin.h"
 
 /**************************************** UART Configuration ****************************************/
@@ -227,44 +227,26 @@ const clock_configType clockConfig =
 int main(void)
 {
     
-    // lin_pduType frame;
+    lin_pduType frame;
 
     clock_init(&clockConfig);
 
-    // lin_init(19200U);
+    lin_init(19200U);
 
-    // frame.identifier = 0x12U;
-    // frame.dataLength = LIN_DATA_2_BYTE;
-    // frame.data[0] = 0xAAU;
-    // frame.data[1] = 0x55U;
-    // frame.checksumMod = LIN_CHECKSUM_CLASSIC;
-
-            lin_errorType status;
-
-        lin_init(19200);
-
-        lin_testFillBuffer();
-
-        status = lin_verifyChecksum(LIN_CHECKSUM_CLASSIC);
-
-        if (status == LIN_OK)
-        {
-            /* Turn on Green LED */
-        }
-        else
-        {
-            /* Turn on Red LED */
-        }
+    frame.identifier = 0x12U;
+    frame.dataLength = LIN_DATA_2_BYTE;
+    frame.data[0] = 0xAAU;
+    frame.data[1] = 0x55U;
+    frame.checksumMod = LIN_CHECKSUM_CLASSIC;
 
     while (1)
     {
-        //lin_sendFrame(&frame);
+        lin_sendFrame(&frame);
 
         /* Simple delay */
         // for (volatile uint32_t i = 0U; i < 500000U; i++)
         // {
         // }
-
-
+        
     }
 }

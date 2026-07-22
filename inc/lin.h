@@ -98,7 +98,6 @@ lin_errorType lin_copyReceiveBuffer(uint8_t *buffer);
 lin_errorType lin_clearReceiveBuffer(void);
 void lin_copyByte(void);
 
-void lin_testFillBuffer(void);
 
 
 #endif

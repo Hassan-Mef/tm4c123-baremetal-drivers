@@ -123,25 +123,6 @@ static void lin_sendBreak(void)
     uart_changeBaudRate(&uartConfig, linBaudRate);
 }
 
-
-void lin_testFillBuffer(void)
-{
-    /* Sync */
-    linReceiveBuffer[0] = 0x55U;
-
-    /* PID for Identifier 0x12 */
-    linReceiveBuffer[1] = 0x92U;
-
-    /* Data */
-    linReceiveBuffer[2] = 0xABU;
-    linReceiveBuffer[3] = 0x55U;
-
-    /* Checksum (Classic) */
-    linReceiveBuffer[4] = 0x00U;
-
-    linReceiveIndex = 5U;
-}
-
 /************************************* Function Implementations ***********************************/
 
 /**
