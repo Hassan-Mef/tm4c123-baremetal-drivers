@@ -122,10 +122,10 @@ static void lin_sendBreak(void)
     }
 
     uart_changeBaudRate(&uartConfig, linBaudRate);
-    for (volatile uint32_t i = 0; i < 300; i++)
-{
-    __asm("NOP");
-}
+//     for (volatile uint32_t i = 0; i < 300; i++)
+// {
+//     __asm("NOP");
+// }
 }
 
 /************************************* Function Implementations ***********************************/
@@ -162,13 +162,11 @@ lin_errorType lin_init(uint32_t baudRate)
     /* Register LIN RX callback */
     uartStatus = uart_setCallback(&uartConfig, lin_copyByte);
     
-    volatile int y = 5;
+
     if (uartStatus != UART_SUCCESS)
     {
         return LIN_ERROR_UART;
     }
-
-    volatile int x = 5;
 
     linReceiveIndex = 0U;
     linBaudRate = baudRate;
