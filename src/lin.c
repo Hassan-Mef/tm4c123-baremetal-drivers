@@ -19,6 +19,7 @@ static uint8_t linReceiveBuffer[LIN_RX_BUFFER_SIZE];
 static uint8_t linReceiveIndex = 0U;
 static uint32_t linBaudRate = 0U;
 static uart_configType uartConfig;
+static lin_slaveConfigType slaveConfig;
 
 /************************************* Static Declarations ****************************************/
 
@@ -121,6 +122,10 @@ static void lin_sendBreak(void)
     }
 
     uart_changeBaudRate(&uartConfig, linBaudRate);
+    for (volatile uint32_t i = 0; i < 300; i++)
+{
+    __asm("NOP");
+}
 }
 
 /************************************* Function Implementations ***********************************/
@@ -154,6 +159,16 @@ lin_errorType lin_init(uint32_t baudRate)
     {
         return LIN_ERROR_UART;
     }
+    /* Register LIN RX callback */
+    uartStatus = uart_setCallback(&uartConfig, lin_copyByte);
+    
+    volatile int y = 5;
+    if (uartStatus != UART_SUCCESS)
+    {
+        return LIN_ERROR_UART;
+    }
+
+    volatile int x = 5;
 
     linReceiveIndex = 0U;
     linBaudRate = baudRate;
@@ -245,7 +260,7 @@ lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
     }
 
     frame.identifier = linReceiveBuffer[1] & 0x3F;
-    frame.dataLength = (lin_dataLengthType)(linReceiveIndex - 3U);
+    frame.dataLength = LIN_DATA_2_BYTE;
     frame.checksumMod = checksumModel;
 
     for (uint8_t index = 0U; index < frame.dataLength; index++)
@@ -332,7 +347,7 @@ void lin_copyByte(void)
 {
     char receivedByte;
 
-    if (uart_receiveCharacter(&uartConfig, &receivedByte) != UART_SUCCESS)
+    if (uart_getReceivedCharacter(&uartConfig, &receivedByte) != UART_SUCCESS)
     {
         return;
     }
@@ -342,4 +357,84 @@ void lin_copyByte(void)
         linReceiveBuffer[linReceiveIndex] = (uint8_t)receivedByte;
         linReceiveIndex++;
     }
+    else
+    {
+        lin_clearReceiveBuffer();
+    }
+}
+
+lin_errorType lin_slaveInit(const lin_slaveConfigType *config)
+{
+    if (config == NULL)
+    {
+        return LIN_ERROR_NULL_POINTER;
+    }
+
+    if (config->identifier > LIN_MAX_IDENTIFIER)
+    {
+        return LIN_ERROR_INVALID_IDENTIFIER;
+    }
+
+    slaveConfig = *config;
+
+    return LIN_OK;
+}
+
+lin_errorType lin_receiveFrame(lin_pduType *pdu)
+{
+    lin_errorType status;
+    uint8_t index;
+
+    if (pdu == NULL)
+    {
+        return LIN_ERROR_NULL_POINTER;
+    }
+
+    /* Minimum frame:
+     * Sync + PID + 1 Data Byte + Checksum
+     */
+    if (linReceiveIndex < 5U)
+    {
+        return LIN_ERROR_FRAME;
+    }
+
+    if (linReceiveBuffer[0] != LIN_SYNC_BYTE)
+    {
+        lin_clearReceiveBuffer();
+        return LIN_ERROR_SYNC;
+    }
+
+    /* Extract Identifier from PID */
+    pdu->identifier = linReceiveBuffer[1U] & LIN_MAX_IDENTIFIER;    
+
+    /* Check whether this frame belongs to this slave */
+    if (pdu->identifier != slaveConfig.identifier)
+    {
+        lin_clearReceiveBuffer();
+        return LIN_ERROR_FRAME;
+    }
+
+    /* Calculate received data length */
+    pdu->dataLength = LIN_DATA_2_BYTE;
+    /* Copy received data bytes */
+    for (index = 0U; index < pdu->dataLength; index++)
+    {
+        pdu->data[index] = linReceiveBuffer[index + 2U];
+    }
+
+    pdu->checksumMod = LIN_CHECKSUM_CLASSIC;
+
+    /* Verify checksum */
+    status = lin_verifyChecksum(pdu->checksumMod);
+
+    if (status != LIN_OK)
+    {
+        lin_clearReceiveBuffer();
+        return status;
+    }
+
+    lin_clearReceiveBuffer();
+
+
+    return LIN_OK;
 }

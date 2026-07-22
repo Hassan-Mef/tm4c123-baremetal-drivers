@@ -89,6 +89,11 @@ typedef struct
 
 } lin_pduType;
 
+typedef struct
+{
+    uint8_t identifier;
+} lin_slaveConfigType;
+
 /*************************************** Function Prototypes **************************************/
 
 lin_errorType lin_init(uint32_t baudRate);
@@ -98,6 +103,8 @@ lin_errorType lin_copyReceiveBuffer(uint8_t *buffer);
 lin_errorType lin_clearReceiveBuffer(void);
 void lin_copyByte(void);
 
+lin_errorType lin_slaveInit(const lin_slaveConfigType *config);
+lin_errorType lin_receiveFrame(lin_pduType *pdu);
 
 
 #endif
