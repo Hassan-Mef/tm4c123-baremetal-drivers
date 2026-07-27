@@ -258,7 +258,7 @@ lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
     }
 
     frame.identifier = linReceiveBuffer[1] & 0x3F;
-    frame.dataLength = LIN_DATA_2_BYTE;
+    frame.dataLength = LIN_DATA_8_BYTE;
     frame.checksumMod = checksumModel;
 
     for (uint8_t index = 0U; index < frame.dataLength; index++)
@@ -413,7 +413,7 @@ lin_errorType lin_receiveFrame(lin_pduType *pdu)
     }
 
     /* Calculate received data length */
-    pdu->dataLength = LIN_DATA_2_BYTE;
+    pdu->dataLength = LIN_DATA_8_BYTE;
     /* Copy received data bytes */
     for (index = 0U; index < pdu->dataLength; index++)
     {

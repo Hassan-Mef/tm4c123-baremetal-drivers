@@ -10,6 +10,7 @@
 #include "lin.h"
 #include "timer.h"
 #include "gpio.h"
+#include "linApp.h"
 
 /**************************************** UART Configuration ****************************************/
 /* Select LIN Node */
@@ -65,72 +66,84 @@ int main(void)
 
     timer_init(&timer0);
 
-    status = lin_init(19200U);
-    gpio_init(&blueLed);
-    gpio_init(&redLed);
+//     status = lin_init(19200U);
+//     gpio_init(&blueLed);
+//     gpio_init(&redLed);
 
-    if (status != LIN_OK)
-    {
-        while (1)
-        {
-        }
-    }
+//     if (status != LIN_OK)
+//     {
+//         while (1)
+//         {
+//         }
+//     }
 
-#if (LIN_NODE_TYPE == LIN_MASTER_NODE)
+// #if (LIN_NODE_TYPE == LIN_MASTER_NODE)
 
-    lin_pduType frame =
-    {
-        .identifier = 0x12U,
-        .dataLength = LIN_DATA_2_BYTE,
-        .data = {0xAAU, 0xBBU},
-        .checksumMod = LIN_CHECKSUM_CLASSIC
-    };
+//     lin_pduType frame =
+//     {
+//         .identifier = 0x12U,
+//         .dataLength = LIN_DATA_2_BYTE,
+//         .data = {0xAAU, 0xBBU},
+//         .checksumMod = LIN_CHECKSUM_CLASSIC
+//     };
 
-    while (1)
-    {
-        status = lin_sendFrame(&frame);
+//     while (1)
+//     {
+//         status = lin_sendFrame(&frame);
 
-        if (status != LIN_OK)
-        {
-            /* Transmission failed */
-            while (1)
-            {
-            }
-        }
+//         if (status != LIN_OK)
+//         {
+//             /* Transmission failed */
+//             while (1)
+//             {
+//             }
+//         }
 
-         timer_blockingDelay(&timer0, 10U);
-    }
+//          timer_blockingDelay(&timer0, 10U);
+//     }
 
-#elif (LIN_NODE_TYPE == LIN_SLAVE_NODE)
+// #elif (LIN_NODE_TYPE == LIN_SLAVE_NODE)
 
 
-    lin_slaveConfigType slave =
-    {
-        .identifier = 0x12U
-    };
+//     lin_slaveConfigType slave =
+//     {
+//         .identifier = 0x12U
+//     };
 
-    lin_pduType receivedFrame;
+//     lin_pduType receivedFrame;
 
-    status = lin_slaveInit(&slave);
+//     status = lin_slaveInit(&slave);
 
-    gpio_digitalToggle(&blueLed);
+//     gpio_digitalToggle(&blueLed);
 
-    if (status != LIN_OK)
-    {
-        while (1)
-        {
-        }
-    }
+//     if (status != LIN_OK)
+//     {
+//         while (1)
+//         {
+//         }
+//     }
 
-    while (1)
-    {
-        status = lin_receiveFrame(&receivedFrame);
+//     while (1)
+//     {
+//         status = lin_receiveFrame(&receivedFrame);
 
-        if (status == LIN_OK)
-        {
-            gpio_digitalToggle(&redLed);
-        }
-    }
+//         if (status == LIN_OK)
+//         {
+//             gpio_digitalToggle(&redLed);
+//         }
+//     }
 
-#endif
+// #endif
+
+linApp_init();
+
+while (1)
+{
+
+
+    linApp_stateMachine();
+
+    timer_blockingDelay(&timer0, 1000);
+}
+
 }

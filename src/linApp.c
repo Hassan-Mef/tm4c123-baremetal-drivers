@@ -1,702 +1,254 @@
-/**************************************************************************************************
- * FILENAME : uart.c
- * DESCRIPTION : Contains UART driver function definitions.
+/***************************************************************************************************
+ * FILENAME    : linApp.c
+ * DESCRIPTION : LIN Application Source File
  *
- * NOTES :
+ * AUTHOR      : Hassan
  *
- * AUTHOR : Hassan
  ***************************************************************************************************/
 
 /*************************************** Header Inclusion*****************************************/
-#include "uart.h"
-#include "gpio.h"
+
+#include "linApp.h"
+#include "lin.h"
 
 /********************************************* Globals ********************************************/
 
-static uart_registerType *const uartRegisters[] =
+static linApp_stateType appState = LIN_APP_INIT;
+
+static lin_pduType txFrame;
+static lin_pduType rxFrame;
+
+static linApp_commandType currentCommand = LIN_APP_COMMAND_INVALID;
+
+static uart_configType uartConfig;
+
+
+static char commandBuffer[16];
+static uint8_t commandIndex = 0;
+
+static volatile int commandReady = 0;
+
+/************************************* Function Implementations ***********************************/
+
+static linApp_commandType linApp_parseCommand(const char *command)
 {
-    UART0,
-    UART1,
-    UART2,
-    UART3,
-    UART4,
-    UART5,
-    UART6,
-    UART7
-};
+    if (command == NULL)
+    {
+        return LIN_APP_COMMAND_INVALID;
+    }
 
-static const uint32_t uartClockMask[] =
-{
-    (1U << 0),
-    (1U << 1),
-    (1U << 2),
-    (1U << 3),
-    (1U << 4),
-    (1U << 5),
-    (1U << 6),
-    (1U << 7)
-};
+    if ((command[0] == 'R') &&
+        (command[1] == 'E') &&
+        (command[2] == 'D') &&
+        (command[3] == '\0'))
+    {
+        return LIN_APP_COMMAND_RED;
+    }
 
-typedef struct
-{
-    gpio_portType port;
-    gpio_pinType txPin;
-    gpio_pinType rxPin;
+    if ((command[0] == 'G') &&
+        (command[1] == 'R') &&
+        (command[2] == 'E') &&
+        (command[3] == 'E') &&
+        (command[4] == 'N') &&
+        (command[5] == '\0'))
+    {
+        return LIN_APP_COMMAND_GREEN;
+    }
 
-} uart_pinConfigType;
+    if ((command[0] == 'B') &&
+        (command[1] == 'L') &&
+        (command[2] == 'U') &&
+        (command[3] == 'E') &&
+        (command[4] == '\0'))
+    {
+        return LIN_APP_COMMAND_BLUE;
+    }
 
-static const uart_pinConfigType uartPins[] =
-{
-    /* UART0 */
-    {GPIO_PORT_A, GPIO_PIN_1, GPIO_PIN_0},
+    if ((command[0] == 'O') &&
+        (command[1] == 'F') &&
+        (command[2] == 'F') &&
+        (command[3] == '\0'))
+    {
+        return LIN_APP_COMMAND_OFF;
+    }
 
-    /* UART1 */
-    {GPIO_PORT_B, GPIO_PIN_1, GPIO_PIN_0},
-
-     /* UART2 */
-    {GPIO_PORT_D, GPIO_PIN_7, GPIO_PIN_6},
-
-    /* UART3 */
-    {GPIO_PORT_C, GPIO_PIN_7, GPIO_PIN_6},
-
-    /* UART4 */
-    {GPIO_PORT_C, GPIO_PIN_5, GPIO_PIN_4},
-
-    /* UART5 */
-    {GPIO_PORT_E, GPIO_PIN_5, GPIO_PIN_4},
-
-    /* UART6 */
-    {GPIO_PORT_D, GPIO_PIN_5, GPIO_PIN_4},
-
-    /* UART7 */
-    {GPIO_PORT_E, GPIO_PIN_1, GPIO_PIN_0}
-};
-
-/* IRQ Lookup Table */
-static const uart_irqNumberType uartIRQTable[] =
-{
-    UART0_IRQ,
-    UART1_IRQ,
-    UART2_IRQ,
-    UART3_IRQ,
-    UART4_IRQ,
-    UART5_IRQ,
-    UART6_IRQ,
-    UART7_IRQ
-};
-
-/* Last received character for each UART */
-static volatile char uartReceivedData[UART_INVALID];
-
-static void uart_rxEchoCallback(void);
-/* UART RX callback table */
-static void (*uartCallbacks[UART_INVALID])(void) = 
-{
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback, 
-    uart_rxEchoCallback,
-};
-
-static uart_numberType currentInterruptUART = UART_INVALID;
-
-/************************************* Function Implementations***********************************/
-
-/**
- * @brief uart_setBaudRate : Configures the UART baud rate.
- *
- * Calculates and programs the integer and fractional baud-rate
- * divisors for the selected UART peripheral.
- *
- * @param uart : Pointer to UART register structure.
- * @param baudRate : Desired baud rate.
- *
- * @return void
- */
-static void uart_setBaudRate(uart_registerType *uart, uint32_t baudRate)
-{
-    uint32_t divisor;
-    uint32_t integer;
-    uint32_t fractional;
-
-    divisor = 16U * baudRate;
-
-    integer = clock_getSystemFrequency() / divisor;
-
-    fractional = ((clock_getSystemFrequency() % divisor) * 64U +
-                  (divisor / 2U)) /
-                 divisor;
-
-    uart->UARTIBRD = integer;
-    uart->UARTFBRD = fractional;
+    return LIN_APP_COMMAND_INVALID;
 }
 
-/**
- * @brief uart_configurePins : Configures GPIO pins for the selected UART.
- *
- * @param uartNumber : UART peripheral number.
- *
- * @return uart_errorType
- */
-static uart_errorType uart_configurePins(uart_numberType uartNumber)
-{
-    gpio_configType gpioConfig;
-    gpio_registersType *gpio = NULL;
-    const uart_pinConfigType *pins = NULL;
-
-    if (uartNumber >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    /* Get selected UART pin configuration */
-    pins = &uartPins[uartNumber];
-
-    /* Configure RX pin */
-    gpioConfig.port = pins->port;
-    gpioConfig.pin = pins->rxPin;
-    gpioConfig.mode = GPIO_MODE_ALTERNATE;
-
-    if (gpio_init(&gpioConfig) != GPIO_SUCCESS)
-    {
-        return UART_INVALID_CONFIG;
-    }
-
-    /* Configure TX pin */
-    gpioConfig.pin = pins->txPin;
-
-    if (gpio_init(&gpioConfig) != GPIO_SUCCESS)
-    {
-        return UART_INVALID_CONFIG;
-    }
-
-    /* Get GPIO register pointer */
-    switch (pins->port)
-    {
-    case GPIO_PORT_A:
-        gpio = GPIOA;
-        break;
-
-    case GPIO_PORT_B:
-        gpio = GPIOB;
-        break;
-
-    case GPIO_PORT_C:
-        gpio = GPIOC;
-        break;
-
-    case GPIO_PORT_D:
-        gpio = GPIOD;
-        break;
-
-    case GPIO_PORT_E:
-        gpio = GPIOE;
-        break;
-
-    case GPIO_PORT_F:
-        gpio = GPIOF;
-        break;
-
-    default:
-        return UART_INVALID_CONFIG;
-    }
-
-    /* Disable analog function */
-    gpio->AMSEL &= ~(1U << pins->rxPin);
-    gpio->AMSEL &= ~(1U << pins->txPin);
-
-    /* Configure GPIO Port Control for UART alternate function */
-
-    /* RX */
-    gpio->PCTL &= ~(0xFU << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
-    gpio->PCTL |= (GPIO_PCTL_UART << (pins->rxPin * GPIO_PCTL_PIN_OFFSET));
-
-    /* TX */
-    gpio->PCTL &= ~(0xFU << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
-    gpio->PCTL |= (GPIO_PCTL_UART << (pins->txPin * GPIO_PCTL_PIN_OFFSET));
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_init : Initializes the selected UART peripheral.
- *
- * Configures the UART baud rate, frame format, GPIO pins,
- * clock source, and optionally enables receive interrupts.
- *
- * @param config : Pointer to UART configuration.
- *
- * @return uart_errorType
- */
-uart_errorType uart_init(uart_configType* config)
-{
-
-    uart_registerType *uart = NULL;
-
-    /* Validate input pointer */
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    /* Validate UART number */
-    if (config->number >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    /* Validate baud rate */
-    if (config->baudRate == 0U)
-    {
-        return UART_INVALID_BAUDRATE;
-    }
-
-    /* Enable UART module clock */
-    SYSCTL_RCGCUART |= uartClockMask[config->number];
-
-    /* Configure UART GPIO pins */
-    if (uart_configurePins(config->number) != UART_SUCCESS)
-    {
-        return UART_INVALID_CONFIG;
-    }
-
-    /* Get UART register pointer */
-    uart = uartRegisters[config->number];
-
-    /* Disable UART before configuration */
-    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
-
-    /* Configure baud rate */
-    uart_setBaudRate(uart, config->baudRate);
-
-    /* Configure frame format
-     *  - 8 data bits
-     *  - No parity
-     *  - One stop bit
-     */
-    uart->UARTLCRH =
-    (config->wordLength << UARTLCRH_WLEN_BIT);
-
-    switch (config->parity)
-    {
-    case UART_PARITY_NONE:
-        uart->UARTLCRH &= ~(1U << UARTLCRH_PEN_BIT);
-        break;
-
-    case UART_PARITY_EVEN:
-        uart->UARTLCRH |= (1U << UARTLCRH_PEN_BIT);
-        uart->UARTLCRH |= (1U << UARTLCRH_EPS_BIT);
-        break;
-
-    case UART_PARITY_ODD:
-        uart->UARTLCRH |= (1U << UARTLCRH_PEN_BIT);
-        uart->UARTLCRH &= ~(1U << UARTLCRH_EPS_BIT);
-        break;
-    default:
-        return  UART_INVALID_CONFIG;
-    }
-
-
-    if (config->stopBits == UART_STOP_BITS_2)
-    {
-        uart->UARTLCRH |= (1U << UARTLCRH_STP2_BIT);
-    }
-    else
-    {
-        uart->UARTLCRH &= ~(1U << UARTLCRH_STP2_BIT);
-    }
-
-    /* Select System Clock as UART clock source */
-    uart->UARTCC = 0U;
-
-    /* Enable transmitter and receiver */
-    uart->UARTCTL |=
-        (1U << UARTCTL_TXE_BIT) |
-        (1U << UARTCTL_RXE_BIT);
-
-    /* Enable UART interrupt if requested */
-    if (config->interruptEnable)
-    {
-        /* Enable RX interrupt in UARTIM register */
-        uart->UARTIM |= (1U << UARTIM_RXIM_BIT);
-
-        /* Enable UART interrupt in NVIC */
-        uint32_t irqNumber = uartIRQTable[config->number];
-        NVIC_ENABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] |= (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
-    }
-
-    /* Enable UART */
-    uart->UARTCTL |= (1U << UARTCTL_UARTEN_BIT);
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_deInit : Deinitializes the selected UART peripheral.
- * Disables the UART transmitter, receiver, UART interrupts,
- * and the corresponding NVIC interrupt.
- *
- * @param config : Pointer to UART configuration.
- *
- * @return uart_errorType
- */
-uart_errorType uart_deInit(uart_configType* config)
-{
-    uart_registerType *uart = NULL;
-    uint32_t irqNumber;
-
-    /* Validate pointer */
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    /* Validate UART number */
-    if (config->number >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    uart = uartRegisters[config->number];
-
-    /* Disable UART interrupts */
-    uart->UARTIM = 0U;
-
-    /* Clear pending UART interrupts */
-    uart->UARTICR = 0xFFFFFFFFU;
-
-    /* Disable NVIC interrupt */
-    irqNumber = uartIRQTable[config->number];
-
-    /* NVIC ICER registers start at 0xE000E180 */
-    volatile uint32_t *NVIC_DISABLE_BASE =
-        (volatile uint32_t *)0xE000E180U;
-
-    NVIC_DISABLE_BASE[irqNumber / IRQ_REGISTER_DIVISION_FACTOR] =
-        (1U << (irqNumber % IRQ_REGISTER_DIVISION_FACTOR));
-
-    /* Disable transmitter */
-    uart->UARTCTL &= ~(1U << UARTCTL_TXE_BIT);
-
-    /* Disable receiver */
-    uart->UARTCTL &= ~(1U << UARTCTL_RXE_BIT);
-
-    /* Disable UART module */
-    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_changeBuadRate : Chnages the cureent Baud  
- *
- * @param config : Pointer to UART configuration.
- *
- * @return uart_errorType
- */
-uart_errorType uart_changeBaudRate(uart_configType *config,uint32_t baudRate)
-{
-    uart_registerType *uart  = uartRegisters[config->number];
-
-    while (uart->UARTFR & (1U << UARTFR_BUSY_BIT))
-    {
-    }
-
-    /* disable Uart*/
-    uart->UARTCTL &= ~(1U << UARTCTL_UARTEN_BIT);
-
-    uart_setBaudRate(uart, baudRate);
-
-    uart->UARTLCRH = uart->UARTLCRH;
-
-    uart->UARTCTL |= (1U << UARTCTL_UARTEN_BIT);
-
-    return UART_SUCCESS;
-    
-}
-
-/**
- * @brief uart_sendCharacter : Sends a single character over UART.
- *
- * @param config : Pointer to UART configuration.
- * @param data   : Character to transmit.
- *
- * @return uart_errorType
- */
-uart_errorType uart_sendCharacter(uart_configType* config, char data)
-{
-    uart_registerType *uart = NULL;
-
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (config->number >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    uart = uartRegisters[config->number];
-
-      /* Convert LF to CR+LF */
-    if (data == '\n')
-    {
-        while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))
-        {
-        }
-
-        uart->UARTDR = '\r';
-    }
-
-    /* Wait until TX FIFO is not full */
-    while (uart->UARTFR & (1U << UARTFR_TXFF_BIT))    
-    {
-    }
-
-    /* Transmit character */
-    uart->UARTDR = (uint32_t)data;
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_sendString : Sends a NULL terminated string.
- *
- * @param config : Pointer to UART configuration.
- * @param data   : String to transmit.
- *
- * @return uart_errorType
- */
-uart_errorType uart_sendString(uart_configType* config, char* data)
-{
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (data == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    while (*data != '\0')
-    {
-        uart_sendCharacter(config, *data);
-        data++;
-    }
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_receiveCharacter : Receives a character.
- *
- * Waits until a character is available in the receive buffer,
- * then reads and returns it.
- *
- * @param config : Pointer to UART configuration.
- * @param data : Pointer to store the received character.
- *
- * @return uart_errorType
- */
-uart_errorType uart_receiveCharacter(uart_configType* config, char* data)
-{
-    uart_registerType *uart = NULL;
-
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (data == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (config->number >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    uart = uartRegisters[config->number];
-
-    /* Wait until data is available */
-    while (uart->UARTFR & (1U << UARTFR_RXFE_BIT))
-    {
-    }
-
-    /* Read received character */
-    *data = (char)(uart->UARTDR & 0xFFU);
-
-    
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_receiveNB : Receives a character without blocking.
- *
- * Checks whether a character is available in the receive buffer.
- * If data is available, the received character is returned
- * immediately. Otherwise, the function returns UART_BUSY.
- *
- * @param config : Pointer to UART configuration.
- * @param data : Pointer to store the received character.
- *
- * @return uart_errorType
- */
-uart_errorType uart_receiveNB(uart_configType* config, char* data)
-{
-    uart_registerType *uart = NULL;
-
-    if (config == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (data == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    if (config->number >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    uart = uartRegisters[config->number];
-
-    /* No data available */
-    if (uart->UARTFR & (1U << UARTFR_RXFE_BIT))
-    {
-        return UART_BUSY;
-    }
-
-    *data = (char)(uart->UARTDR & 0xFFU);
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_getReceivedCharacter : Retrieves the last received UART character.
- * Returns the character stored by the UART interrupt handler for
- * the selected UART peripheral.
- *
- * @param config : Pointer to UART configuration.  
- * @param data : Pointer to store the received character.
- *
- * @return uart_errorType
- */
-uart_errorType uart_getReceivedCharacter(uart_configType* config, char* data)
-{
-    uint8_t uartNumber = config->number ;
-    if (uartNumber >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    if (data == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    *data = uartReceivedData[uartNumber];
-
-    return UART_SUCCESS;
-    
-}
-
-/**
- * @brief uart_interruptHandler : Handles UART receive interrupts.
- * Reads the received character, clears the receive interrupt flag,
- * stores the received data
- *
- * @param config : Pointer to UART configuration.
- *
- * @return uart_errorType
- */
-uart_errorType uart_interruptHandler(uart_numberType uartNumber)
-{
-    uart_registerType *uart = NULL;
-
-    if (uartNumber >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    currentInterruptUART = uartNumber;
-    
-    uart = uartRegisters[uartNumber];
-
-    /* Read received character */
-    uartReceivedData[uartNumber] = (char)(uart->UARTDR & 0xFFU);
-
-
-    uart->UARTICR = (1U << UARTICR_RXIC_BIT);
-
-    if(uartCallbacks[uartNumber] != NULL)
-    {
-        uartCallbacks[uartNumber]();
-    }
-
-    return UART_SUCCESS;
-}
-
-/**
- * @brief uart_setCallback : Registers a callback function for a UART.
- *
- * Associates a user-defined callback function with the selected
- * UART peripheral. The callback is executed whenever a receive
- * interrupt occurs.
- *
- * @param config : Pointer to UART configuration.
- * @param callback : Pointer to callback function.
- *
- * @return uart_errorType
- */
-uart_errorType uart_setCallback(uart_configType* config, void (*callback)(void))
-{
-    uint8_t uartNumber = config->number ;
-
-    if (uartNumber >= UART_INVALID)
-    {
-        return UART_INVALID_UART;
-    }
-
-    if (callback == NULL)
-    {
-        return UART_NULL_POINTER;
-    }
-
-    /* Register the callback function */
-    uartCallbacks[uartNumber] = callback;
-
-    return UART_SUCCESS;
-    
-}
-
-/**
- * @brief uart_rxEchoCallback : Default UART receive callback.
- *
- * Retrieves the received character from the interrupt buffer and
- * echoes it back through the UART that generated the interrupt.
- *
- * @return void
- */
-static void uart_rxEchoCallback(void)
+static void linApp_uartCallback(void)
 {
     char ch;
-    uart_configType config;
 
-    config.number = currentInterruptUART;
-
-    if (uart_getReceivedCharacter(&config, &ch) == UART_SUCCESS)
+    if (uart_getReceivedCharacter(&uartConfig, &ch) != UART_SUCCESS)
     {
-        uart_sendCharacter(&config, ch);
+        return;
     }
+
+    if (ch == '\r')
+     {
+         commandBuffer[commandIndex] = '\0';
+         commandReady = 1;
+         commandIndex = 0U;
+     }
+     else if (ch == '\n')
+     {
+         /* Ignore LF */
+     }
+     else if (commandIndex < (sizeof(commandBuffer) - 1U))
+     {
+         commandBuffer[commandIndex++] = ch;
+     }
+}
+
+static void linApp_prepareFrame(void)
+{
+    txFrame.identifier = 0x10U;          /* Command PID */
+    txFrame.checksumMod = LIN_CHECKSUM_CLASSIC;
+
+    switch (currentCommand)
+    {
+        case LIN_APP_COMMAND_RED:
+            txFrame.data[0] = 'R';
+            txFrame.data[1] = 'E';
+            txFrame.data[2] = 'D';
+            txFrame.dataLength = 3U;
+            break;
+
+        case LIN_APP_COMMAND_GREEN:
+            txFrame.data[0] = 'G';
+            txFrame.data[1] = 'R';
+            txFrame.data[2] = 'E';
+            txFrame.data[3] = 'E';
+            txFrame.data[4] = 'N';
+            txFrame.dataLength = 5U;
+            break;
+
+        case LIN_APP_COMMAND_BLUE:
+            txFrame.data[0] = 'B';
+            txFrame.data[1] = 'L';
+            txFrame.data[2] = 'U';
+            txFrame.data[3] = 'E';
+            txFrame.dataLength = 4U;
+            break;
+
+        case LIN_APP_COMMAND_OFF:
+            txFrame.data[0] = 'O';
+            txFrame.data[1] = 'F';
+            txFrame.data[2] = 'F';
+            txFrame.dataLength = 3U;
+            break;
+
+        default:
+            txFrame.dataLength = 0U;
+            break;
+    }
+}
+
+void linApp_init(void)
+{
+    /* Future:
+     * - Initialize UART for PuTTY
+     * - Initialize LIN
+     * - Initialize LEDs
+     */
+    lin_errorType linStatus;
+    uart_errorType uartStatus;
+
+    
+    linStatus = lin_init(19200U); 
+
+    uartConfig.number = UART_0;
+    uartConfig.baudRate = UART_BUAD_RATE_115200;
+    uartConfig.wordLength = UART_WORD_LENGTH_8;
+    uartConfig.parity = UART_PARITY_NONE;
+    uartConfig.stopBits = UART_STOP_BITS_1;
+    uartConfig.interruptEnable = true;
+
+    uartStatus = uart_init(&uartConfig);
+    
+    if (uartStatus != UART_SUCCESS)
+    {
+        while (1)
+        {
+        }
+    }
+
+    uartStatus = uart_setCallback(&uartConfig, linApp_uartCallback);
+
+     if (uartStatus != UART_SUCCESS)
+    {
+        while (1)
+        {
+        }
+    }
+  
+
+    if (linStatus != LIN_OK)
+    {
+        while (1)
+        {
+        }
+    }
+
+    appState = LIN_APP_IDLE;
+
+}
+
+void linApp_stateMachine(void)
+{
+    switch(appState)
+    {
+        case LIN_APP_INIT:
+            linApp_init();
+            break;
+
+        case LIN_APP_IDLE:
+            if (commandReady)
+            {
+                currentCommand = linApp_parseCommand(commandBuffer);
+            
+                commandReady = 0;
+            
+                if (currentCommand != LIN_APP_COMMAND_INVALID)
+                {
+                    appState = LIN_APP_SEND_COMMAND;
+                }
+                else
+                {
+                    uart_sendString(&uartConfig, "Invalid Command\r\n");
+                }
+            }
+            break;
+
+        case LIN_APP_SEND_COMMAND:
+
+            linApp_prepareFrame();
+
+            if (lin_sendFrame(&txFrame) == LIN_OK)
+            {
+                /* Clear the Commnad so it doesnt send again */
+                currentCommand = LIN_APP_COMMAND_INVALID;
+                appState = LIN_APP_WAIT_RESPONSE;
+            }
+
+            break;
+
+        case LIN_APP_WAIT_RESPONSE:
+                appState = LIN_APP_IDLE;
+            break;
+
+        case LIN_APP_PROCESS_COMMAND:
+
+            break;
+
+        default:
+            appState = LIN_APP_INIT;
+            break;
+    }
+}
+
+void linApp_setCommand(linApp_commandType command)
+{
+    currentCommand = command;
+
 }

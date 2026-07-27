@@ -12,7 +12,6 @@
 /*************************************** Header Inclusion *****************************************/
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "lin.h"
 
@@ -34,13 +33,13 @@ typedef enum
 
 typedef enum
 {
-    LIN_APP_CMD_RED,
-    LIN_APP_CMD_GREEN,
-    LIN_APP_CMD_BLUE,
-    LIN_APP_CMD_OFF,
-    LIN_APP_CMD_ACK,
-    LIN_APP_CMD_ERR,
-    LIN_APP_CMD_INVALID
+    LIN_APP_COMMAND_RED,
+    LIN_APP_COMMAND_GREEN,
+    LIN_APP_COMMAND_BLUE,
+    LIN_APP_COMMAND_OFF,
+    LIN_APP_COMMAND_ACK,
+    LIN_APP_COMMAND_ERR,
+    LIN_APP_COMMAND_INVALID
 } linApp_commandType;
 
 /******************************************* Data Types *******************************************/
@@ -49,4 +48,5 @@ typedef enum
 
 void linApp_init(void);
 void linApp_stateMachine(void);
+void linApp_setCommand(linApp_commandType command);
 #endif
