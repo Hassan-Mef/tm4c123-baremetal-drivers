@@ -14,10 +14,11 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "clock.h"
 
 /********************************************* Macros *********************************************/
 
-#define SYSCTL_BASE    0x400FE000U
+// #define SYSCTL_BASE    0x400FE000U
 #define SYSCTL_RCGCGPIO_OFFSET    0x608U
 
 #define SYSCTL_RCGCGPIO \

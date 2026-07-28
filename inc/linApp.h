@@ -12,8 +12,9 @@
 /*************************************** Header Inclusion *****************************************/
 
 #include <stdint.h>
-
 #include "lin.h"
+#include "timer.h"
+#include "gpio.h"
 
 /********************************************* Macros *********************************************/
 
@@ -27,7 +28,8 @@ typedef enum
     LIN_APP_WAIT_COMMAND,
     LIN_APP_SEND_COMMAND,
     LIN_APP_WAIT_RESPONSE,
-    LIN_APP_PROCESS_COMMAND
+    LIN_APP_PROCESS_COMMAND,
+    LIN_APP_SEND_RESPONSE
 } linApp_stateType;
 
 
@@ -42,6 +44,13 @@ typedef enum
     LIN_APP_COMMAND_INVALID
 } linApp_commandType;
 
+typedef enum
+{
+    LIN_APP_RESPONSE_ACK,
+    LIN_APP_RESPONSE_ERR
+
+} linApp_responseType;
+
 /******************************************* Data Types *******************************************/
 
 /*************************************** Function Prototypes **************************************/
@@ -49,4 +58,6 @@ typedef enum
 void linApp_init(void);
 void linApp_stateMachine(void);
 void linApp_setCommand(linApp_commandType command);
+
+void linApp_sendTestFrame(void);
 #endif

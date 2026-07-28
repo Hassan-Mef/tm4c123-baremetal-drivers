@@ -34,6 +34,11 @@
 #define LIN_RESERVED_ID0               (0x3EU)
 #define LIN_RESERVED_ID1               (0x3FU)
 
+#define LIN_MASTER_NODE                (1U)
+#define LIN_SLAVE_NODE                 (2U)
+            
+#define LIN_NODE_TYPE                  LIN_SLAVE_NODE
+
 /****************************************** Enumerations ******************************************/
 
 typedef enum
