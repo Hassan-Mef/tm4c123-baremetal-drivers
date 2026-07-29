@@ -21,7 +21,7 @@ const clock_configType clockConfig =
 
 timer_configType timer0 =
 {
-    .number = TIMER_4,
+    .number = TIMER_2,
     .channel = TIMER_AB,
     .mode = TIMER_MODE_ONE_SHOT,
     .direction = TIMER_COUNT_DOWN,
@@ -32,22 +32,12 @@ timer_configType timer0 =
 };
 
 
-gpio_configType blueLed ={
-            .port = GPIO_PORT_F,
-        .pin = GPIO_PIN_2,
-        .mode = GPIO_MODE_OUTPUT
-    };
 
-gpio_configType redLed ={
-    .port = GPIO_PORT_F,
-    .pin = GPIO_PIN_1,
-    .mode = GPIO_MODE_OUTPUT
-};
 
-static void ledCallback(void)
-{
-    gpio_digitalToggle(&redLed);
-}
+// static void ledCallback(void)
+// {
+//     gpio_digitalToggle(&redLed);
+// }
 
 
 /************************************** Callback ****************************************************/
@@ -62,7 +52,7 @@ int main(void)
 
     timer_init(&timer0);
 
-//     status = lin_init(19200U);
+    // status = lin_init(19200U);
 //     gpio_init(&blueLed);
 //     gpio_init(&redLed);
 
@@ -143,13 +133,13 @@ while (1)
 {
 
 
-     linApp_stateMachine();
+      linApp_stateMachine();
 
     //  gpio_digitalToggle(&redLed);
-    //  linApp_sendTestFrame();
+    //    linApp_sendTestFrame();
 
     //  status = gpio_digitalToggle(&redLed);
-    // timer_blockingDelay(&timer0, U);
+    //    timer_blockingDelay(&timer0, 100U);
 }
 
 }

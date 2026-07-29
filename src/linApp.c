@@ -1,10 +1,10 @@
 /***************************************************************************************************
- * FILENAME    : linApp.c
- * DESCRIPTION : LIN Application Source File
- *
- * AUTHOR      : Hassan
- *
- ***************************************************************************************************/
+* FILENAME    : linApp.c
+* DESCRIPTION : LIN Application Source File
+*
+* AUTHOR      : Hassan
+*
+***************************************************************************************************/
 
 /*************************************** Header Inclusion*****************************************/
 
@@ -39,7 +39,7 @@ static timer_configType ackTimer =
     .direction  = TIMER_COUNT_DOWN,
     .size       = TIMER_SIZE_32_BIT,
     .prescaler  = 0U,
-    .unit       = TIMER_SEC,
+    .unit       = TIMER_MS,
     .interrupt  = TIMER_INTERRUPT_ENABLE
 };
 
@@ -54,6 +54,12 @@ gpio_configType blueLeds ={
     gpio_configType greenLed ={
         .port = GPIO_PORT_F,
         .pin = GPIO_PIN_3,
+        .mode = GPIO_MODE_OUTPUT
+    };
+
+    gpio_configType redLed ={
+        .port = GPIO_PORT_F,
+        .pin = GPIO_PIN_1,
         .mode = GPIO_MODE_OUTPUT
     };
 
@@ -121,23 +127,20 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
     {
         return LIN_APP_COMMAND_INVALID;
     }
+    
+        
+        // gpio_digitalToggle(&greenLed);
 
-      uart_sendString(&uartConfig,"Mangos ; ");
-    uart_sendString(&uartConfig,&frame->data[0]);
-    uart_sendString(&uartConfig,&frame->data[1]);
-    uart_sendString(&uartConfig,&frame->data[2]);
-    uart_sendString(&uartConfig,&frame->data[3]);
-    uart_sendString(&uartConfig,&frame->data[4]);
-    uart_sendString(&uartConfig,&frame->data[5]);
-    if ((frame->dataLength == 3U) &&
+    if (
         (frame->data[0] == 'R') &&
         (frame->data[1] == 'E') &&
         (frame->data[2] == 'D'))
-    {
+        {
+            //  gpio_digitalToggle(&blueLeds);
         return LIN_APP_COMMAND_RED;
     }
 
-    if ((frame->dataLength == 5U) &&
+    if (
         (frame->data[0] == 'G') &&
         (frame->data[1] == 'R') &&
         (frame->data[2] == 'E') &&
@@ -147,7 +150,7 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
         return LIN_APP_COMMAND_GREEN;
     }
 
-    if ((frame->dataLength == 4U) &&
+    if (
         (frame->data[0] == 'B') &&
         (frame->data[1] == 'L') &&
         (frame->data[2] == 'U') &&
@@ -156,7 +159,7 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
         return LIN_APP_COMMAND_BLUE;
     }
 
-    if ((frame->dataLength == 3U) &&
+    if (
         (frame->data[0] == 'O') &&
         (frame->data[1] == 'F') &&
         (frame->data[2] == 'F'))
@@ -169,27 +172,29 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
 
 static void linApp_prepareResponse(linApp_responseType response)
 {
-    txFrame.identifier = 0x10U; 
-    txFrame.checksumMod = LIN_CHECKSUM_CLASSIC;
+    txFrame.identifier = 0x10U;
+    txFrame.checksumMod = LIN_CHECKSUM_ENHANCED;
+
+    txFrame.data[0] = 0U;
+    txFrame.data[1] = 0U;
+    txFrame.data[2] = 0U;
+    txFrame.data[3] = 0U;
+    txFrame.data[4] = 0U;
+    txFrame.dataLength = 5U;
 
     if (response == LIN_APP_RESPONSE_ACK)
     {
-        txFrame.dataLength = 3U;
-
         txFrame.data[0] = 'A';
         txFrame.data[1] = 'C';
         txFrame.data[2] = 'K';
     }
     else
     {
-        txFrame.dataLength = 3U;
-
         txFrame.data[0] = 'E';
         txFrame.data[1] = 'R';
         txFrame.data[2] = 'R';
     }
 }
-
 static void linApp_uartCallback(void)
 {
     char ch;
@@ -217,8 +222,16 @@ static void linApp_uartCallback(void)
 
 static void linApp_prepareFrame(void)
 {
-    txFrame.identifier = 0x10U; /* Command PID */
+    txFrame.identifier = 0x10U;
     txFrame.checksumMod = LIN_CHECKSUM_ENHANCED;
+
+    /* Zero all 5 slots first — guarantees deterministic padding */
+    txFrame.data[0] = 0U;
+    txFrame.data[1] = 0U;
+    txFrame.data[2] = 0U;
+    txFrame.data[3] = 0U;
+    txFrame.data[4] = 0U;
+    txFrame.dataLength = 5U;   /* ALWAYS 5, no matter which command */
 
     switch (currentCommand)
     {
@@ -226,7 +239,6 @@ static void linApp_prepareFrame(void)
         txFrame.data[0] = 'R';
         txFrame.data[1] = 'E';
         txFrame.data[2] = 'D';
-        txFrame.dataLength = 3U;
         break;
 
     case LIN_APP_COMMAND_GREEN:
@@ -235,7 +247,6 @@ static void linApp_prepareFrame(void)
         txFrame.data[2] = 'E';
         txFrame.data[3] = 'E';
         txFrame.data[4] = 'N';
-        txFrame.dataLength = 5U;
         break;
 
     case LIN_APP_COMMAND_BLUE:
@@ -243,18 +254,15 @@ static void linApp_prepareFrame(void)
         txFrame.data[1] = 'L';
         txFrame.data[2] = 'U';
         txFrame.data[3] = 'E';
-        txFrame.dataLength = 4U;
         break;
 
     case LIN_APP_COMMAND_OFF:
         txFrame.data[0] = 'O';
         txFrame.data[1] = 'F';
         txFrame.data[2] = 'F';
-        txFrame.dataLength = 3U;
         break;
 
     default:
-        txFrame.dataLength = 0U;
         break;
     }
 }
@@ -275,6 +283,7 @@ void linApp_init(void)
 
     gpio_init(&blueLeds);
     gpio_init(&greenLed);
+    gpio_init(&redLed);
     
     uartConfig.number = UART_0;
     uartConfig.baudRate = UART_BUAD_RATE_115200;
@@ -301,7 +310,7 @@ void linApp_init(void)
         }
     }
 
-    if (timer_setCallback(TIMER_1, linApp_ackTimeoutCallback) != TIMER_SUCCESS)
+    if (timer_setCallback(TIMER_4, linApp_ackTimeoutCallback) != TIMER_SUCCESS)
     {
         while (1)
         {
@@ -332,7 +341,7 @@ void linApp_init(void)
         {
         }
     }
-    gpio_digitalToggle(&blueLeds);
+    // gpio_digitalToggle(&blueLeds);
 
 #endif
     appState = LIN_APP_IDLE;
@@ -340,6 +349,8 @@ void linApp_init(void)
 #if (LIN_NODE_TYPE == LIN_MASTER_NODE)
     linApp_printPrompt();
 #endif
+
+
 
 }
 
@@ -364,7 +375,7 @@ void linApp_stateMachine(void)
 
             if (currentCommand != LIN_APP_COMMAND_INVALID)
             {
-                appState = LIN_APP_SEND_COMMAND;
+                appState = LIN_APP_SEND_COMMAND;   // this is not working 
             }
             else
             {
@@ -381,7 +392,7 @@ void linApp_stateMachine(void)
 
          if ( ret == LIN_OK)
          {
-            
+            //  gpio_digitalToggle(&greenLed);
             appState = LIN_APP_PROCESS_COMMAND;
 
         }
@@ -392,6 +403,7 @@ void linApp_stateMachine(void)
     case LIN_APP_SEND_COMMAND:
 
         linApp_prepareFrame();
+    // linApp_printPrompt();
 
         if (lin_sendFrame(&txFrame) == LIN_OK)
         {   
@@ -400,7 +412,7 @@ void linApp_stateMachine(void)
             
             ackTimeout = 0U;
 
-            timer_start(&ackTimer, 3U);
+            timer_start(&ackTimer, 3000U);
 
             appState = LIN_APP_WAIT_RESPONSE;
         }
@@ -439,12 +451,12 @@ void linApp_stateMachine(void)
     case LIN_APP_PROCESS_COMMAND:
 
         receivedCommand = linApp_decodeFrame(&rxFrame);
-      
+        // gpio_digitalToggle(&redLed);
         switch (receivedCommand)
         {
         case LIN_APP_COMMAND_RED:
 
-            gpio_digitalToggle(&greenLed);
+            gpio_digitalToggle(&redLed);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
@@ -452,7 +464,7 @@ void linApp_stateMachine(void)
 
         case LIN_APP_COMMAND_GREEN:
 
-            /* Toggle green LED */
+            gpio_digitalToggle(&greenLed);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
@@ -460,7 +472,7 @@ void linApp_stateMachine(void)
 
         case LIN_APP_COMMAND_BLUE:
 
-            /* Toggle blue LED */
+            gpio_digitalToggle(&blueLeds);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
@@ -468,7 +480,7 @@ void linApp_stateMachine(void)
 
         case LIN_APP_COMMAND_OFF:
 
-            /* Turn off all LEDs */
+            gpio_digitalToggle(&redLed);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
