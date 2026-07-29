@@ -44,7 +44,7 @@
 #define LIN_MASTER_NODE                (1U)
 #define LIN_SLAVE_NODE                 (2U)
             
-#define LIN_NODE_TYPE                  LIN_MASTER_NODE
+#define LIN_NODE_TYPE                  LIN_SLAVE_NODE
 
 /****************************************** Enumerations ******************************************/
 

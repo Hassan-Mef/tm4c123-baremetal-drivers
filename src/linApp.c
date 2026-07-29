@@ -480,7 +480,9 @@ void linApp_stateMachine(void)
 
         case LIN_APP_COMMAND_OFF:
 
-            gpio_digitalToggle(&redLed);
+            gpio_digitalWrite(&redLed, 0);
+            gpio_digitalWrite(&blueLeds, 0);
+            gpio_digitalWrite(&greenLed, 0);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
@@ -511,21 +513,3 @@ void linApp_stateMachine(void)
     }
 }
 
-void linApp_setCommand(linApp_commandType command)
-{
-    currentCommand = command;
-}
-
-
-void linApp_sendTestFrame(void)
-{
-    lin_pduType frame =
-    {
-        .identifier = 0x10U,
-        .checksumMod = LIN_CHECKSUM_ENHANCED,
-        .dataLength = 3U,
-        .data = { 'R', 'E', 'D' }
-    };
-
-    (void)lin_sendFrame(&frame);
-}

@@ -373,8 +373,8 @@ lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
     uint8_t calculatedChecksum = lin_calculateChecksum(&frame);
     uint8_t receivedChecksum = linReceiveBuffer[linReceiveIndex - 1U];
 
-    // return (calculatedChecksum == receivedChecksum) ? LIN_OK : LIN_ERROR_INVALID_CHECKSUM;
-    return LIN_OK;
+     return (calculatedChecksum == receivedChecksum) ? LIN_OK : LIN_ERROR_INVALID_CHECKSUM;
+    
 }
 /**
  * @brief lin_copyReceiveBuffer : Copies the LIN receive buffer.
@@ -442,7 +442,7 @@ void lin_copyByte(void)
     {
         return;
     }
-
+    uart_sendCharacter(&uart0Config, '*');
     if (linReceiveIndex < LIN_RX_BUFFER_SIZE)
     {
         linReceiveBuffer[linReceiveIndex] = (uint8_t)receivedByte;
@@ -621,24 +621,24 @@ lin_errorType lin_receiveFrame(lin_pduType *pdu)
     pdu->dataLength = expectedDataLength;
     char hex[] = "0123456789ABCDEF";
 
-uart_sendString(&uart0Config, "sync=");
-uart_sendCharacter(&uart0Config, hex[(syncIndex >> 4) & 0x0F]);
-uart_sendCharacter(&uart0Config, hex[syncIndex & 0x0F]);
+// uart_sendString(&uart0Config, "sync=");
+// uart_sendCharacter(&uart0Config, hex[(syncIndex >> 4) & 0x0F]);
+// uart_sendCharacter(&uart0Config, hex[syncIndex & 0x0F]);
 
-uart_sendString(&uart0Config, " idx=");
-uart_sendCharacter(&uart0Config, hex[(linReceiveIndex >> 4) & 0x0F]);
-uart_sendCharacter(&uart0Config, hex[linReceiveIndex & 0x0F]);
+// uart_sendString(&uart0Config, " idx=");
+// uart_sendCharacter(&uart0Config, hex[(linReceiveIndex >> 4) & 0x0F]);
+// uart_sendCharacter(&uart0Config, hex[linReceiveIndex & 0x0F]);
 
-uart_sendString(&uart0Config, "\r\n");
+// uart_sendString(&uart0Config, "\r\n");
 
-uart_sendString(&uart0Config, "RXBUF=");
+// uart_sendString(&uart0Config, "RXBUF=");
 
-for (uint8_t i = 0U; i < linReceiveIndex; i++)
-{
-    uart_sendCharacter(&uart0Config, hex[(linReceiveBuffer[i] >> 4) & 0x0F]);
-    uart_sendCharacter(&uart0Config, hex[linReceiveBuffer[i] & 0x0F]);
-    uart_sendCharacter(&uart0Config, ' ');
-}
+// for (uint8_t i = 0U; i < linReceiveIndex; i++)
+// {
+//     uart_sendCharacter(&uart0Config, hex[(linReceiveBuffer[i] >> 4) & 0x0F]);
+//     uart_sendCharacter(&uart0Config, hex[linReceiveBuffer[i] & 0x0F]);
+//     uart_sendCharacter(&uart0Config, ' ');
+// }
 
 uart_sendString(&uart0Config, "\r\n");
 
@@ -650,24 +650,24 @@ uart_sendString(&uart0Config, "\r\n");
     pdu->checksumMod = LIN_CHECKSUM_ENHANCED;
     // gpio_digitalToggle(&greenLedss);
 
-    uart_sendString(&uart0Config, "LEN=");
+//     uart_sendString(&uart0Config, "LEN=");
 
 
-uart_sendCharacter(&uart0Config, hex[(pdu->dataLength >> 4) & 0x0F]);
-uart_sendCharacter(&uart0Config, hex[pdu->dataLength & 0x0F]);
+// uart_sendCharacter(&uart0Config, hex[(pdu->dataLength >> 4) & 0x0F]);
+// uart_sendCharacter(&uart0Config, hex[pdu->dataLength & 0x0F]);
 
-uart_sendString(&uart0Config, "\r\n");
+// uart_sendString(&uart0Config, "\r\n");
 
-uart_sendString(&uart0Config, "COPY=");
+// uart_sendString(&uart0Config, "COPY=");
 
-for (uint8_t i = 0; i < pdu->dataLength; i++)
-{
-    uart_sendCharacter(&uart0Config, hex[(pdu->data[i] >> 4) & 0x0F]);
-    uart_sendCharacter(&uart0Config, hex[pdu->data[i] & 0x0F]);
-    uart_sendCharacter(&uart0Config, ' ');
-}
+// for (uint8_t i = 0; i < pdu->dataLength; i++)
+// {
+//     uart_sendCharacter(&uart0Config, hex[(pdu->data[i] >> 4) & 0x0F]);
+//     uart_sendCharacter(&uart0Config, hex[pdu->data[i] & 0x0F]);
+//     uart_sendCharacter(&uart0Config, ' ');
+// }
 
-uart_sendString(&uart0Config, "\r\n");
+// uart_sendString(&uart0Config, "\r\n");
     status = lin_verifyChecksum(pdu->checksumMod);
 
     lin_clearReceiveBuffer();
