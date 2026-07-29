@@ -483,7 +483,7 @@ void linApp_stateMachine(void)
             gpio_digitalWrite(&redLed, 0);
             gpio_digitalWrite(&blueLeds, 0);
             gpio_digitalWrite(&greenLed, 0);
-
+            // gpio_digitalToggle(&blueLeds);
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
 
             break;
