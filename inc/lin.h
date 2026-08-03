@@ -22,6 +22,7 @@
 
 #define LIN_RX_BUFFER_SIZE             (11U)
 #define LIN_SYNC_BYTE                  (0x55U)
+#define MAX_EXPECTED_LENGTH            (0x5)
 
 #define LIN_MAX_DATA_LENGTH            (5U)
 #define LIN_MIN_DATA_LENGTH            (1U)
@@ -39,7 +40,7 @@
 #define LIN_ID_GREEN                    0x12U
 #define LIN_ID_BLUE                     0x13U
 #define LIN_ID_OFF                      0x14U
-#define LIN_ID_RESPONSE                 0x10U   /* ACK/ERR keeps its own ID */
+#define LIN_ID_RESPONSE                 0x10U   
 
 #define LIN_MASTER_NODE                (1U)
 #define LIN_SLAVE_NODE                 (2U)

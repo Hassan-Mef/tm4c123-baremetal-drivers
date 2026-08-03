@@ -43,8 +43,6 @@ static timer_configType ackTimer =
     .interrupt  = TIMER_INTERRUPT_ENABLE
 };
 
-
-
 gpio_configType blueLeds ={
         .port = GPIO_PORT_F,
         .pin = GPIO_PIN_2,
@@ -65,17 +63,34 @@ gpio_configType blueLeds ={
 
 
 /************************************* Function Implementations ***********************************/
-
+/**
+ * @brief linApp_printPrompt : Prints the sender prompt.
+ *
+ * @return void
+ */
 static void linApp_printPrompt(void)
 {
     uart_sendString(&uartConfig, "<S> ");
 }
 
+
+/**
+ * @brief linApp_ackTimeoutCallback : Handles ACK timeout.
+ *
+ * @return void
+ */
 static void linApp_ackTimeoutCallback(void)
 {
     ackTimeout = 1U;
 }
 
+/**
+ * @brief linApp_parseCommand : Parses a received command.
+ *
+ * @param command : Pointer to the command string.
+ *
+ * @return linApp_commandType
+ */
 static linApp_commandType linApp_parseCommand(const char *command)
 {
     if (command == NULL)
@@ -121,6 +136,13 @@ static linApp_commandType linApp_parseCommand(const char *command)
     return LIN_APP_COMMAND_INVALID;
 }
 
+/**
+ * @brief linApp_decodeFrame : Decodes a received LIN frame.
+ *
+ * @param frame : Pointer to the received LIN frame.
+ *
+ * @return linApp_commandType
+ */
 static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
 {
     if (frame == NULL)
@@ -128,20 +150,17 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
         return LIN_APP_COMMAND_INVALID;
     }
     
-        
-        // gpio_digitalToggle(&greenLed);
 
-    if (
-        (frame->data[0] == 'R') &&
+    
+    if ((frame->data[0] == 'R') &&
         (frame->data[1] == 'E') &&
         (frame->data[2] == 'D'))
         {
-            //  gpio_digitalToggle(&blueLeds);
         return LIN_APP_COMMAND_RED;
     }
 
-    if (
-        (frame->data[0] == 'G') &&
+    
+    if ((frame->data[0] == 'G') &&
         (frame->data[1] == 'R') &&
         (frame->data[2] == 'E') &&
         (frame->data[3] == 'E') &&
@@ -150,8 +169,8 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
         return LIN_APP_COMMAND_GREEN;
     }
 
-    if (
-        (frame->data[0] == 'B') &&
+    
+    if ((frame->data[0] == 'B') &&
         (frame->data[1] == 'L') &&
         (frame->data[2] == 'U') &&
         (frame->data[3] == 'E'))
@@ -159,8 +178,7 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
         return LIN_APP_COMMAND_BLUE;
     }
 
-    if (
-        (frame->data[0] == 'O') &&
+    if ((frame->data[0] == 'O') &&
         (frame->data[1] == 'F') &&
         (frame->data[2] == 'F'))
     {
@@ -170,6 +188,13 @@ static linApp_commandType linApp_decodeFrame(const lin_pduType *frame)
     return LIN_APP_COMMAND_INVALID;
 }
 
+/**
+ * @brief linApp_prepareResponse : Prepares an ACK or ERR response frame.
+ *
+ * @param response : Response type to transmit.
+ *
+ * @return void
+ */
 static void linApp_prepareResponse(linApp_responseType response)
 {
     txFrame.identifier = 0x10U;
@@ -195,6 +220,12 @@ static void linApp_prepareResponse(linApp_responseType response)
         txFrame.data[2] = 'R';
     }
 }
+
+/**
+ * @brief linApp_uartCallback : Handles UART receive interrupt.
+ *
+ * @return void
+ */
 static void linApp_uartCallback(void)
 {
     char ch;
@@ -220,18 +251,22 @@ static void linApp_uartCallback(void)
     }
 }
 
+/**
+ * @brief linApp_prepareFrame : Prepares a LIN command frame.
+ *
+ * @return void
+ */
 static void linApp_prepareFrame(void)
 {
     txFrame.identifier = 0x10U;
     txFrame.checksumMod = LIN_CHECKSUM_ENHANCED;
 
-    /* Zero all 5 slots first — guarantees deterministic padding */
     txFrame.data[0] = 0U;
     txFrame.data[1] = 0U;
     txFrame.data[2] = 0U;
     txFrame.data[3] = 0U;
     txFrame.data[4] = 0U;
-    txFrame.dataLength = 5U;   /* ALWAYS 5, no matter which command */
+    txFrame.dataLength = 5U;   
 
     switch (currentCommand)
     {
@@ -263,10 +298,25 @@ static void linApp_prepareFrame(void)
         break;
 
     default:
+
+        for (uint8_t i = 0U; i < 5U; i++)
+        {
+            if (commandBuffer[i] == '\0')
+            {
+                break;
+            }
+
+            txFrame.data[i] = commandBuffer[i];
+        }
         break;
-    }
+        }
 }
 
+/**
+ * @brief linApp_init : Initializes the LIN application.
+ *
+ * @return void
+ */
 void linApp_init(void)
 {
 
@@ -341,7 +391,6 @@ void linApp_init(void)
         {
         }
     }
-    // gpio_digitalToggle(&blueLeds);
 
 #endif
     appState = LIN_APP_IDLE;
@@ -354,7 +403,11 @@ void linApp_init(void)
 
 }
 
-
+/**
+ * @brief linApp_stateMachine : Executes the LIN application state machine.
+ *
+ * @return void
+ */
 void linApp_stateMachine(void)
 {
     switch (appState)
@@ -375,7 +428,7 @@ void linApp_stateMachine(void)
 
             if (currentCommand != LIN_APP_COMMAND_INVALID)
             {
-                appState = LIN_APP_SEND_COMMAND;   // this is not working 
+                appState = LIN_APP_SEND_COMMAND;   
             }
             else
             {
@@ -387,15 +440,13 @@ void linApp_stateMachine(void)
 
 #elif (LIN_NODE_TYPE == LIN_SLAVE_NODE)
 
-        //  gpio_digitalToggle(&greenLed);
+    
          lin_errorType ret = lin_receiveFrame(&rxFrame);
 
          if ( ret == LIN_OK)
          {
-            //  gpio_digitalToggle(&greenLed);
             appState = LIN_APP_PROCESS_COMMAND;
-
-        }
+         }
 
 #endif
         break;
@@ -403,7 +454,6 @@ void linApp_stateMachine(void)
     case LIN_APP_SEND_COMMAND:
 
         linApp_prepareFrame();
-    // linApp_printPrompt();
 
         if (lin_sendFrame(&txFrame) == LIN_OK)
         {   
@@ -451,11 +501,13 @@ void linApp_stateMachine(void)
     case LIN_APP_PROCESS_COMMAND:
 
         receivedCommand = linApp_decodeFrame(&rxFrame);
-        // gpio_digitalToggle(&redLed);
         switch (receivedCommand)
         {
         case LIN_APP_COMMAND_RED:
 
+            uart_sendString(&uartConfig,
+            "Received command \"RED\", toggling the onboard red LED.\r\n");
+            
             gpio_digitalToggle(&redLed);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
@@ -463,7 +515,10 @@ void linApp_stateMachine(void)
             break;
 
         case LIN_APP_COMMAND_GREEN:
-
+            
+            uart_sendString(&uartConfig,
+            "Received command \"GREEN\", toggling the onboard green LED.\r\n");
+            
             gpio_digitalToggle(&greenLed);
 
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
@@ -471,6 +526,9 @@ void linApp_stateMachine(void)
             break;
 
         case LIN_APP_COMMAND_BLUE:
+            
+            uart_sendString(&uartConfig,
+            "Received command \"BLUE\", toggling the onboard blue LED.\r\n");
 
             gpio_digitalToggle(&blueLeds);
 
@@ -479,17 +537,22 @@ void linApp_stateMachine(void)
             break;
 
         case LIN_APP_COMMAND_OFF:
-
+            uart_sendString(&uartConfig,
+            "Received command \"OFF\", turning off all LEDs.\r\n");
+            
             gpio_digitalWrite(&redLed, 0);
             gpio_digitalWrite(&blueLeds, 0);
             gpio_digitalWrite(&greenLed, 0);
-            // gpio_digitalToggle(&blueLeds);
             linApp_prepareResponse(LIN_APP_RESPONSE_ACK);
+            
 
             break;
 
         default:
-
+            
+            uart_sendString(&uartConfig,
+            "Received invalid command.\r\n");
+            
             linApp_prepareResponse(LIN_APP_RESPONSE_ERR);
 
             break;

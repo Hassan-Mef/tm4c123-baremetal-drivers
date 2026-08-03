@@ -10,7 +10,6 @@
 
 #include "lin.h"
 #include "uart.h"
-#include "gpio.h"
 #include "timer.h"
 
 /********************************************* Macros *********************************************/
@@ -24,11 +23,6 @@ static uart_configType uartConfig;
 static uart_configType uart0Config;
 static lin_slaveConfigType slaveConfig;
 
-gpio_configType greenLedss ={
-    .port = GPIO_PORT_F,
-    .pin = GPIO_PIN_2,
-    .mode = GPIO_MODE_OUTPUT
-};
 
 static uint8_t lin_getExpectedDataLength(uint8_t identifier)
 {
@@ -145,10 +139,7 @@ static void lin_sendBreak(void)
     }
 
     uart_changeBaudRate(&uartConfig, linBaudRate);
-//     for (volatile uint32_t i = 0; i < 300; i++)
-// {
-//     __asm("NOP");
-// }
+
 }
 
 /************************************* Function Implementations ***********************************/
@@ -196,7 +187,7 @@ lin_errorType lin_init(uint32_t baudRate)
 
     uart0Status = uart_init(&uart0Config);
 
-    gpio_init(&greenLedss);
+
     if (uart0Status != UART_SUCCESS)
     {
         while (1)
@@ -281,7 +272,13 @@ lin_errorType lin_sendFrame(const lin_pduType *pdu)
     return LIN_OK;
 }
 
-  
+/**
+ * @brief lin_verifyChecksum : Verifies the checksum of a received LIN frame.
+ *
+ * @param checksumModel : LIN checksum model.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
 {
     lin_pduType frame;
@@ -303,7 +300,7 @@ lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
 
     frame.identifier = linReceiveBuffer[syncIndex + 1U] & 0x3F;
 
-    frame.dataLength = 5;
+    frame.dataLength = MAX_EXPECTED_LENGTH;
     frame.checksumMod = checksumModel;
 
     for (uint8_t index = 0U; index < frame.dataLength; index++)
@@ -395,8 +392,13 @@ void lin_copyByte(void)
     }
 }
 
-
-
+/**
+ * @brief lin_slaveInit : Initializes the LIN slave configuration.
+ *
+ * @param config : Pointer to the slave configuration.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_slaveInit(const lin_slaveConfigType *config)
 {
     if (config == NULL)
@@ -414,7 +416,13 @@ lin_errorType lin_slaveInit(const lin_slaveConfigType *config)
     return LIN_OK;
 }
 
-
+/**
+ * @brief lin_receiveFrame : Receives and validates a LIN frame.
+ *
+ * @param pdu : Pointer to the LIN Protocol Data Unit.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_receiveFrame(lin_pduType *pdu)
 {
     uint8_t index;
@@ -451,8 +459,8 @@ lin_errorType lin_receiveFrame(lin_pduType *pdu)
 
     pdu->identifier = linReceiveBuffer[syncIndex + 1U] & LIN_MAX_IDENTIFIER;
 
-    // expectedDataLength = lin_getExpectedDataLength(pdu->identifier);
-    expectedDataLength = 5;
+    
+    expectedDataLength = MAX_EXPECTED_LENGTH;
 
     if (expectedDataLength == 0U)
     {
@@ -465,7 +473,7 @@ lin_errorType lin_receiveFrame(lin_pduType *pdu)
     
     if (linReceiveIndex < expectedTotalBytes)
     {
-        return LIN_ERROR_FRAME;   /* Frame still arriving — deterministically, not a guess */
+        return LIN_ERROR_FRAME;   
     }
     
     pdu->dataLength = expectedDataLength;
