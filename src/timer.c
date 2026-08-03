@@ -590,3 +590,31 @@ timer_errorType timer_setCallback(timer_numberType timer, void (*callback)(void)
 
     return TIMER_SUCCESS;
 }
+
+/**
+ * @brief timer_stop : Stops a running timer.
+ * Disables the configured timer channel without modifying the
+ * timer configuration or reload value.
+ *
+ * @param config : Pointer to timer configuration.
+ *
+ * @return timer_errorType
+ */
+timer_errorType timer_stop(timer_configType *config)
+{
+    timer_registerType *timer = NULL;
+    timer_errorType status;
+
+    status = timer_validateConfig(config);
+
+    if (status != TIMER_SUCCESS)
+    {
+        return status;
+    }
+
+    timer = timerBase[config->number];
+
+    timer_disable(timer, config->channel);
+
+    return TIMER_SUCCESS;
+}

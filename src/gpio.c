@@ -112,9 +112,7 @@ gpio_errorType gpio_digitalWrite(gpio_configType * const config, uint8_t pinStat
     {
         return GPIO_ERROR_INVALID_STATE;
     }
-    {
-        return GPIO_ERROR_INVALID_STATE;
-    }
+    
 
     if (config->port >= GPIO_PORT_INVALID)
     {

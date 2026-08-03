@@ -10,6 +10,7 @@
 
 #include "lin.h"
 #include "uart.h"
+#include "timer.h"
 
 /********************************************* Macros *********************************************/
 
@@ -19,7 +20,23 @@ static uint8_t linReceiveBuffer[LIN_RX_BUFFER_SIZE];
 static uint8_t linReceiveIndex = 0U;
 static uint32_t linBaudRate = 0U;
 static uart_configType uartConfig;
+static uart_configType uart0Config;
 static lin_slaveConfigType slaveConfig;
+
+
+static uint8_t lin_getExpectedDataLength(uint8_t identifier)
+{
+    switch (identifier)
+    {
+        case LIN_ID_RED:      return 3U;
+        case LIN_ID_GREEN:    return 5U;
+        case LIN_ID_BLUE:     return 4U;
+        case LIN_ID_OFF:      return 3U;
+        case LIN_ID_RESPONSE: return 3U;  /* ACK/ERR */
+        default:              return 0U;  /* unknown ID */
+    }
+}
+
 
 /************************************* Static Declarations ****************************************/
 
@@ -122,10 +139,7 @@ static void lin_sendBreak(void)
     }
 
     uart_changeBaudRate(&uartConfig, linBaudRate);
-//     for (volatile uint32_t i = 0; i < 300; i++)
-// {
-//     __asm("NOP");
-// }
+
 }
 
 /************************************* Function Implementations ***********************************/
@@ -161,12 +175,33 @@ lin_errorType lin_init(uint32_t baudRate)
     }
     /* Register LIN RX callback */
     uartStatus = uart_setCallback(&uartConfig, lin_copyByte);
+
+    uart_errorType uart0Status;
+       
+    uart0Config.number = UART_0;
+    uart0Config.baudRate = UART_BUAD_RATE_115200;
+    uart0Config.wordLength = UART_WORD_LENGTH_8;
+    uart0Config.parity = UART_PARITY_NONE;
+    uart0Config.stopBits = UART_STOP_BITS_1;
+    uart0Config.interruptEnable = true;
+
+    uart0Status = uart_init(&uart0Config);
+
+
+    if (uart0Status != UART_SUCCESS)
+    {
+        while (1)
+        {
+        }
+    }
     
 
     if (uartStatus != UART_SUCCESS)
     {
         return LIN_ERROR_UART;
     }
+
+
 
     linReceiveIndex = 0U;
     linBaudRate = baudRate;
@@ -237,52 +272,48 @@ lin_errorType lin_sendFrame(const lin_pduType *pdu)
     return LIN_OK;
 }
 
-  
+/**
+ * @brief lin_verifyChecksum : Verifies the checksum of a received LIN frame.
+ *
+ * @param checksumModel : LIN checksum model.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_verifyChecksum(lin_checksumModType checksumModel)
 {
     lin_pduType frame;
+    uint8_t syncIndex = 0xFFU;
 
-    if (checksumModel >= LIN_CHECKSUM_INVALID)
+    for (uint8_t i = 0U; i < linReceiveIndex; i++)
     {
-        return LIN_ERROR_INVALID_CHECKSUM_MODEL;
+        if (linReceiveBuffer[i] == LIN_SYNC_BYTE)
+        {
+            syncIndex = i;
+            break;
+        }
     }
 
-    if (linReceiveIndex < 4U)
+    if (syncIndex == 0xFFU)
     {
         return LIN_ERROR_FRAME;
     }
 
-    if (linReceiveIndex > LIN_RX_BUFFER_SIZE)
-    {
-        return LIN_ERROR_BUFFER_OVERFLOW;
-    }
+    frame.identifier = linReceiveBuffer[syncIndex + 1U] & 0x3F;
 
-    frame.identifier = linReceiveBuffer[1] & 0x3F;
-    frame.dataLength = LIN_DATA_2_BYTE;
+    frame.dataLength = MAX_EXPECTED_LENGTH;
     frame.checksumMod = checksumModel;
 
     for (uint8_t index = 0U; index < frame.dataLength; index++)
     {
-        frame.data[index] = linReceiveBuffer[index + 2U];
+        frame.data[index] = linReceiveBuffer[syncIndex + 2U + index];
     }
 
+    uint8_t calculatedChecksum = lin_calculateChecksum(&frame);
+    uint8_t receivedChecksum = linReceiveBuffer[linReceiveIndex - 1U];
 
-    uint8_t calculatedChecksum;
-    uint8_t receivedChecksum;
-
-    calculatedChecksum = lin_calculateChecksum(&frame);
-
-    receivedChecksum = linReceiveBuffer[linReceiveIndex - 1U];
-
-    if (calculatedChecksum == receivedChecksum)
-    {
-        return LIN_OK;
-    }
-
-    return LIN_ERROR_INVALID_CHECKSUM;
-
+     return (calculatedChecksum == receivedChecksum) ? LIN_OK : LIN_ERROR_INVALID_CHECKSUM;
+    
 }
-
 /**
  * @brief lin_copyReceiveBuffer : Copies the LIN receive buffer.
  *
@@ -349,7 +380,7 @@ void lin_copyByte(void)
     {
         return;
     }
-
+    
     if (linReceiveIndex < LIN_RX_BUFFER_SIZE)
     {
         linReceiveBuffer[linReceiveIndex] = (uint8_t)receivedByte;
@@ -361,6 +392,13 @@ void lin_copyByte(void)
     }
 }
 
+/**
+ * @brief lin_slaveInit : Initializes the LIN slave configuration.
+ *
+ * @param config : Pointer to the slave configuration.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_slaveInit(const lin_slaveConfigType *config)
 {
     if (config == NULL)
@@ -378,61 +416,79 @@ lin_errorType lin_slaveInit(const lin_slaveConfigType *config)
     return LIN_OK;
 }
 
+/**
+ * @brief lin_receiveFrame : Receives and validates a LIN frame.
+ *
+ * @param pdu : Pointer to the LIN Protocol Data Unit.
+ *
+ * @return lin_errorType
+ */
 lin_errorType lin_receiveFrame(lin_pduType *pdu)
 {
-    lin_errorType status;
     uint8_t index;
+    uint8_t syncIndex = 0xFFU;
+    uint8_t expectedDataLength;
+    uint8_t expectedTotalBytes;
+    lin_errorType status;
 
     if (pdu == NULL)
     {
         return LIN_ERROR_NULL_POINTER;
     }
 
-    /* Minimum frame:
-     * Sync + PID + 1 Data Byte + Checksum
-     */
-    if (linReceiveIndex < 5U)
+    /* Find the Sync byte — skips any break-artifact byte(s) ahead of it */
+    for (index = 0U; index < linReceiveIndex; index++)
     {
-        return LIN_ERROR_FRAME;
+        if (linReceiveBuffer[index] == LIN_SYNC_BYTE)
+        {
+            syncIndex = index;
+            break;
+        }
     }
 
-    if (linReceiveBuffer[0] != LIN_SYNC_BYTE)
+    if (syncIndex == 0xFFU)
+    {
+        return LIN_ERROR_FRAME;   /* Sync not seen yet, keep waiting */
+    }
+
+    /* Need Sync + PID at minimum before we can even look up length */
+    if (linReceiveIndex < (uint8_t)(syncIndex + 2U))
+    {
+        return LIN_ERROR_FRAME;   /* PID hasn't arrived yet */
+    }
+
+    pdu->identifier = linReceiveBuffer[syncIndex + 1U] & LIN_MAX_IDENTIFIER;
+
+    
+    expectedDataLength = MAX_EXPECTED_LENGTH;
+
+    if (expectedDataLength == 0U)
     {
         lin_clearReceiveBuffer();
-        return LIN_ERROR_SYNC;
+        return LIN_ERROR_FRAME;   /* Unknown identifier, not addressed to anyone we recognize */
     }
 
-    /* Extract Identifier from PID */
-    pdu->identifier = linReceiveBuffer[1U] & LIN_MAX_IDENTIFIER;    
-
-    /* Check whether this frame belongs to this slave */
-    if (pdu->identifier != slaveConfig.identifier)
+    
+    expectedTotalBytes = (uint8_t)(syncIndex + 2U + expectedDataLength + 1U); /* Sync+PID+data+checksum */
+    
+    if (linReceiveIndex < expectedTotalBytes)
     {
-        lin_clearReceiveBuffer();
-        return LIN_ERROR_FRAME;
+        return LIN_ERROR_FRAME;   
     }
+    
+    pdu->dataLength = expectedDataLength;
 
-    /* Calculate received data length */
-    pdu->dataLength = LIN_DATA_2_BYTE;
-    /* Copy received data bytes */
+
     for (index = 0U; index < pdu->dataLength; index++)
     {
-        pdu->data[index] = linReceiveBuffer[index + 2U];
+        pdu->data[index] = linReceiveBuffer[syncIndex + 2U + index];
     }
+    
+    pdu->checksumMod = LIN_CHECKSUM_ENHANCED;
 
-    pdu->checksumMod = LIN_CHECKSUM_CLASSIC;
-
-    /* Verify checksum */
     status = lin_verifyChecksum(pdu->checksumMod);
-
-    if (status != LIN_OK)
-    {
-        lin_clearReceiveBuffer();
-        return status;
-    }
 
     lin_clearReceiveBuffer();
 
-
-    return LIN_OK;
+    return status;
 }

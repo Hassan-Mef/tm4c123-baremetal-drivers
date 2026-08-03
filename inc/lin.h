@@ -6,8 +6,8 @@
  *
 ***************************************************************************************************/
 
-#ifndef LIN_H_
-#define LIN_H_
+#ifndef _LIN_H_
+#define _LIN_H_
 
 /*************************************** Header Inclusion *****************************************/
 
@@ -19,10 +19,12 @@
 
 /********************************************* Macros *********************************************/
 
+
 #define LIN_RX_BUFFER_SIZE             (11U)
 #define LIN_SYNC_BYTE                  (0x55U)
+#define MAX_EXPECTED_LENGTH            (0x5)
 
-#define LIN_MAX_DATA_LENGTH            (8U)
+#define LIN_MAX_DATA_LENGTH            (5U)
 #define LIN_MIN_DATA_LENGTH            (1U)
 
 #define LIN_MAX_IDENTIFIER             (0x3FU)
@@ -33,6 +35,17 @@
 
 #define LIN_RESERVED_ID0               (0x3EU)
 #define LIN_RESERVED_ID1               (0x3FU)
+
+#define LIN_ID_RED                      0x11U
+#define LIN_ID_GREEN                    0x12U
+#define LIN_ID_BLUE                     0x13U
+#define LIN_ID_OFF                      0x14U
+#define LIN_ID_RESPONSE                 0x10U   
+
+#define LIN_MASTER_NODE                (1U)
+#define LIN_SLAVE_NODE                 (2U)
+            
+#define LIN_NODE_TYPE                  LIN_SLAVE_NODE
 
 /****************************************** Enumerations ******************************************/
 
