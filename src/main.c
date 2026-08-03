@@ -1,169 +1,136 @@
 /***************************************************************************************************
  * FILENAME    : main.c
- * DESCRIPTION : GPIO Driver Test
+ * DESCRIPTION : UART Driver Validation
  *
  * AUTHOR      : Hassan
- *
-***************************************************************************************************/
+ ***************************************************************************************************/
 
-/*************************************** Header Inclusion *****************************************/
+ /*************************************** Header Inclusion *****************************************/
 
-#include "gpio.h"
+#include "lin.h"
 #include "timer.h"
+#include "gpio.h"
 
-/************************************* Private Functions ******************************************/
+/**************************************** UART Configuration ****************************************/
+/* Select LIN Node */
+#define LIN_MASTER_NODE    (1U)
+#define LIN_SLAVE_NODE     (2U)
 
-gpio_configType redLed =
+#define LIN_NODE_TYPE      LIN_SLAVE_NODE
+/* Change to LIN_SLAVE_NODE to test slave */
+
+const clock_configType clockConfig =
 {
-    .port = GPIO_PORT_F,
-    .pin  = GPIO_PIN_1,
-    .mode = GPIO_MODE_OUTPUT
+    .source = CLOCK_SOURCE_PLL,
+    .frequency = CLOCK_FREQ_80MHZ
 };
 
-gpio_configType blueLed =
+timer_configType timer0 =
 {
-    .port = GPIO_PORT_F,
-    .pin  = GPIO_PIN_2,
-    .mode = GPIO_MODE_OUTPUT
+    .number = TIMER_0,
+    .channel = TIMER_A,
+    .mode = TIMER_MODE_PERIODIC,
+    .direction = TIMER_COUNT_DOWN,
+    .size = TIMER_SIZE_16_BIT,
+    .unit = TIMER_MS,
+    .prescaler = 79U,
+    .interrupt = TIMER_INTERRUPT_DISABLE
 };
 
-gpio_configType greenLed =
-{
-    .port = GPIO_PORT_F,
-    .pin  = GPIO_PIN_3,
-    .mode = GPIO_MODE_OUTPUT
-};
+gpio_configType blueLed ={
+        .port = GPIO_PORT_F,
+        .pin = GPIO_PIN_2,
+        .mode = GPIO_MODE_OUTPUT
+    };
 
-gpio_configType button =
-{
-    .port = GPIO_PORT_F,
-    .pin  = GPIO_PIN_4,
-    .mode = GPIO_MODE_INPUT
-};
+    gpio_configType redLed ={
+        .port = GPIO_PORT_F,
+        .pin = GPIO_PIN_1,
+        .mode = GPIO_MODE_OUTPUT
+    };
+
+    void uart1callBack()
+    {
+        
+    }
+/************************************** Callback ****************************************************/
 
 
-static void redCallback(void)
-{
-    gpio_digitalToggle(&redLed);
-}
-
-static void blueCallback(void)
-{
-    gpio_digitalToggle(&blueLed);
-}
-
-static void greenCallback(void)
-{
-    gpio_digitalToggle(&greenLed);
-}
 /************************************** Main Implementation ***************************************/
-
 int main(void)
 {
-    /* Initialize GPIO pins for LEDs */
-    gpio_init(&redLed);
-    gpio_init(&blueLed);
-    gpio_init(&greenLed);
-    gpio_init(&button);
+    lin_errorType status;
 
-    /* Set up timer configuration */
+    clock_init(&clockConfig);
 
-    timer_configType timer0 =
-    {
-        .number     = TIMER_0,
-        .channel    = TIMER_AB,
-        .mode       = TIMER_MODE_PERIODIC,
-        .direction  = TIMER_COUNT_DOWN,
-        .size       = TIMER_SIZE_32_BIT,
-        .prescaler  = 0U,
-        .unit       = TIMER_MS,
-        .interrupt  = TIMER_INTERRUPT_ENABLE
-    };
-
-    timer_configType timer1 =
-    {
-        .number     = TIMER_1,
-        .channel    = TIMER_AB,
-        .mode       = TIMER_MODE_PERIODIC,
-        .direction  = TIMER_COUNT_DOWN,
-        .size       = TIMER_SIZE_32_BIT,
-        .prescaler  = 0U,
-        .unit       = TIMER_MS,
-        .interrupt  = TIMER_INTERRUPT_ENABLE
-    };
-
-    timer_configType timer3 =
-    {
-        .number     = TIMER_3,
-        .channel    = TIMER_AB,
-        .mode       = TIMER_MODE_ONE_SHOT,
-        .direction  = TIMER_COUNT_DOWN,
-        .size       = TIMER_SIZE_32_BIT,
-        .prescaler  = 0U,
-        .unit       = TIMER_MS,
-        .interrupt  = TIMER_INTERRUPT_ENABLE
-    };
-    timer_configType timer4 =
-    {
-        .number     = TIMER_4,
-        .channel    = TIMER_AB,
-        .mode       = TIMER_MODE_ONE_SHOT,
-        .direction  = TIMER_COUNT_DOWN,
-        .size       = TIMER_SIZE_32_BIT,
-        .prescaler  = 0U,
-        .unit       = TIMER_MS,
-        .interrupt  = TIMER_INTERRUPT_DISABLE
-    };
-
-    /* Initialize timers and set callbacks */
     timer_init(&timer0);
-    timer_init(&timer1);
-    timer_init(&timer3);
-    timer_init(&timer4);
 
-    timer_setCallback(TIMER_0, redCallback);
-    timer_setCallback(TIMER_1, blueCallback);
-    timer_setCallback(TIMER_3, greenCallback);
+    status = lin_init(19200U);
+    gpio_init(&blueLed);
+    gpio_init(&redLed);
 
-    timer_start(&timer0, 1000U);
+    if (status != LIN_OK)
+    {
+        while (1)
+        {
+        }
+    }
 
-    uint8_t blockingDemoDone = 0U;
-    uint8_t oneShotDemoDone  = 0U;
-    uint8_t buttonState;
-    uint8_t previousState = 1U;
+#if (LIN_NODE_TYPE == LIN_MASTER_NODE)
+
+    lin_pduType frame =
+    {
+        .identifier = 0x12U,
+        .dataLength = LIN_DATA_2_BYTE,
+        .data = {0xAAU, 0xBBU},
+        .checksumMod = LIN_CHECKSUM_CLASSIC
+    };
 
     while (1)
     {
-        gpio_digitalRead(&button, &buttonState);
+        status = lin_sendFrame(&frame);
 
-        if ((previousState == 1U) && (buttonState == 0U))
+        if (status != LIN_OK)
         {
-            if (blockingDemoDone == 0U)
+            /* Transmission failed */
+            while (1)
             {
-                gpio_digitalToggle(&blueLed);
-                timer_blockingDelay(&timer4, 2000U);
-                gpio_digitalToggle(&blueLed);
-
-                blockingDemoDone = 1U;
             }
-            else if (oneShotDemoDone == 0U)
-            {
-                timer_start(&timer3, 4000U);
-
-                oneShotDemoDone = 1U;
-            }
-
-            /* Wait for button release */
-            do
-            {
-                gpio_digitalRead(&button, &buttonState);
-            }
-            while (buttonState == 0U);
-
-            /* Simple debounce delay */
-            timer_blockingDelay(&timer4, 20U);
         }
 
-        previousState = buttonState;
+         timer_blockingDelay(&timer0, 10U);
     }
+
+#elif (LIN_NODE_TYPE == LIN_SLAVE_NODE)
+
+
+    lin_slaveConfigType slave =
+    {
+        .identifier = 0x12U
+    };
+
+    lin_pduType receivedFrame;
+
+    status = lin_slaveInit(&slave);
+
+    gpio_digitalToggle(&blueLed);
+
+    if (status != LIN_OK)
+    {
+        while (1)
+        {
+        }
+    }
+
+    while (1)
+    {
+        status = lin_receiveFrame(&receivedFrame);
+
+        if (status == LIN_OK)
+        {
+            gpio_digitalToggle(&redLed);
+        }
+    }
+
+#endif
 }

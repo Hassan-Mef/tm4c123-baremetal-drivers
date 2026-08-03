@@ -39,4 +39,16 @@ void TIM4B_IRQHandler(void);
 void TIM5A_IRQHandler(void);
 void TIM5B_IRQHandler(void);
 
+
+/* UART Interrupt Handlers */
+void UART0_IRQHandler(void);
+void UART1_IRQHandler(void);
+void UART2_IRQHandler(void);
+void UART3_IRQHandler(void);
+void UART4_IRQHandler(void);
+void UART5_IRQHandler(void);
+void UART6_IRQHandler(void);
+void UART7_IRQHandler(void);
+
+
 #endif

@@ -42,56 +42,7 @@ static const timer_irqChannelType timerIrqTable[] =
 
 static void (*timerCallback[TIMER_INVALID])(void) = {NULL, NULL, NULL, NULL, NULL, NULL};
      
-static uint8_t clockInitialized = 0U;
 /************************************* Function Implementations************************************/
-
-/**
- * @brief clock_init80MHz : Configures the system clock to 80 MHz.
- *
- * Configures the Main Oscillator (MOSC) and Phase-Locked Loop (PLL)
- * to generate an 80 MHz system clock using the onboard 16 MHz crystal.
- */
-static void clock_init80MHz(void)
-{
-    /* Use RCC2 register for advanced clock configuration */
-    SYSCTL_RCC2 |= RCC2_USERCC2;
-    SYSCTL_RCC  |= RCC_USESYSDIV;
-
-    /* Bypass PLL while configuring the clock */
-    SYSCTL_RCC2 |= RCC2_BYPASS2;
-
-    /* Configure the external crystal frequency to 16 MHz */
-    SYSCTL_RCC &= ~RCC_XTAL_MASK;
-    SYSCTL_RCC |= RCC_XTAL_16MHZ;
-
-    /* Select Main Oscillator (MOSC) as PLL clock source */
-    SYSCTL_RCC2 &= ~RCC2_OSCSRC2_MASK;
-    SYSCTL_RCC2 |= RCC2_OSCSRC2_MOSC;
-
-    /* Enable the system clock divider */
-    SYSCTL_RCC |= RCC_USESYSDIV;
-
-    /* Power up the PLL */
-    SYSCTL_RCC2 &= ~RCC2_PWRDN2;
-
-    /* Enable 400 MHz PLL operation */
-    SYSCTL_RCC2 |= RCC2_DIV400;
-
-    /* Configure system clock divider for 80 MHz */
-    SYSCTL_RCC2 &= ~RCC2_SYSDIV2_MASK;
-    SYSCTL_RCC2 |= RCC2_SYSDIV2_80MHZ;
-
-    /* Clear additional divider LSB */
-    SYSCTL_RCC2 &= ~RCC2_SYSDIV2LSB;
-
-    /* Wait until PLL locks */
-    while ((SYSCTL_RIS & RIS_PLLLRIS) == 0U)
-    {
-    }
-
-    /* Switch system clock source to PLL */
-    SYSCTL_RCC2 &= ~RCC2_BYPASS2;
-}
 
 /**
  * @brief timer_loadAndStart : Loads timer value and starts the timer.
@@ -188,6 +139,7 @@ static timer_errorType timer_validateConfig(timer_configType *config)
 static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t delay, uint32_t *timerCounts)
 {
     uint32_t timerFrequency;
+    uint32_t systemClock = clock_getSystemFrequency();
 
     /* Verify output pointer */
     if (timerCounts == NULL)
@@ -198,11 +150,11 @@ static timer_errorType timer_calculateCounts(timer_configType *config, uint32_t 
     /* Calculate timer frequency */
     if(config->size == TIMER_SIZE_16_BIT)
     {
-        timerFrequency = SYSTEM_CLOCK_HZ / (config->prescaler + 1U);
+        timerFrequency = systemClock / (config->prescaler + 1U);
     }
     else if(config->size == TIMER_SIZE_32_BIT)
     {
-        timerFrequency = SYSTEM_CLOCK_HZ ;
+        timerFrequency = systemClock ;
     }
     else
     {
@@ -272,12 +224,6 @@ static void timer_disable(timer_registerType *timer, timer_subType channel)
 timer_errorType timer_init(timer_configType *config)
 {
 
-    /* Configure system clock only once */
-    if (clockInitialized == 0U)
-    {
-        clock_init80MHz();
-        clockInitialized = 1U;
-    }
 
     timer_registerType *timer = NULL;
     timer_irqNumberType irqNumber;
